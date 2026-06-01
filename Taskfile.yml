@@ -17,19 +17,19 @@ tasks:
   eval:intents:
     desc: Run voice intent and risk evals when promptfoo config exists.
     cmds:
-      - echo "eval:intents skeleton ready at evals/promptfooconfig.yaml; install promptfoo before running real evals"
+      - 'echo "eval:intents skeleton ready at evals/promptfooconfig.yaml; install promptfoo before running real evals"'
 
   test:browser:
     desc: Run browser permission smoke tests when Playwright tests exist.
     cmds:
-      - echo "test:browser skeleton ready at tests/browser/browser-permissions.spec.ts; install Playwright before running real browser tests"
+      - 'echo "test:browser skeleton ready at tests/browser/browser-permissions.spec.ts; install Playwright before running real browser tests"'
 
   browser:doctor:
     desc: Print browser lane doctor command without touching host settings.
     cmds:
-      - echo "manual later: openclaw browser status && openclaw browser doctor --deep"
+      - 'echo "manual later: openclaw browser status && openclaw browser doctor --deep"'
 
   openclaw:doctor:
     desc: Print OpenClaw doctor command without touching host settings.
     cmds:
-      - echo "manual later: openclaw doctor && openclaw gateway status"
+      - 'echo "manual later: openclaw doctor && openclaw gateway status"'
