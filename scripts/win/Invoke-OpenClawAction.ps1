@@ -61,7 +61,7 @@ function Decode-Base64UrlJson {
 
   $bytes = [Convert]::FromBase64String($normalized)
   $json = [Text.Encoding]::UTF8.GetString($bytes)
-  return $json | ConvertFrom-Json -Depth 20
+  return $json | ConvertFrom-Json
 }
 
 function Get-RequiredProperty {
