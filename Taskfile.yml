@@ -1,0 +1,35 @@
+# Taskfile.yml - repo-local execution menu for OpenClaw voice wrapper work.
+version: '3'
+
+tasks:
+  check:
+    desc: Run safe local project checks.
+    cmds:
+      - task: policy:validate
+      - task: eval:intents
+      - task: test:browser
+
+  policy:validate:
+    desc: Validate local policy templates when validators exist.
+    cmds:
+      - echo "policy:validate placeholder - validator skeleton is added in the harness phase"
+
+  eval:intents:
+    desc: Run voice intent and risk evals when promptfoo config exists.
+    cmds:
+      - echo "eval:intents placeholder - promptfoo config is added in the harness phase"
+
+  test:browser:
+    desc: Run browser permission smoke tests when Playwright tests exist.
+    cmds:
+      - echo "test:browser placeholder - Playwright tests are added in the harness phase"
+
+  browser:doctor:
+    desc: Print browser lane doctor command without touching host settings.
+    cmds:
+      - echo "manual later: openclaw browser status && openclaw browser doctor --deep"
+
+  openclaw:doctor:
+    desc: Print OpenClaw doctor command without touching host settings.
+    cmds:
+      - echo "manual later: openclaw doctor && openclaw gateway status"
