@@ -127,15 +127,23 @@ def check_nodes() -> dict:
 
 
 def check_browser() -> dict:
-    result = run_command("browser", ["openclaw", "browser", "status"], timeout=20)
-    unknown_method = "unknown method: browser.request" in result.output
-    ok = result.returncode == 0 and not unknown_method
+    status_result = run_command("browser_status", ["openclaw", "browser", "--browser-profile", "openclaw", "status"], timeout=20)
+    doctor_result = run_command("browser_doctor", ["openclaw", "browser", "--browser-profile", "openclaw", "doctor", "--deep"], timeout=35)
+    output = f"{status_result.output}\n{doctor_result.output}".strip()
+    unknown_method = "unknown method: browser.request" in output
+    ok = status_result.returncode == 0 and doctor_result.returncode == 0 and not unknown_method
+    if ok:
+        summary = "browser live check ok"
+    elif unknown_method:
+        summary = "browser control endpoint unavailable"
+    else:
+        summary = "browser live check unavailable"
     return {
         "name": "browser",
         "status": "ok" if ok else "blocked",
-        "summary": "browser status ok" if ok else "browser capability unavailable",
-        "returncode": result.returncode,
-        "detail": short_output(result.output),
+        "summary": summary,
+        "returncode": doctor_result.returncode if status_result.returncode == 0 else status_result.returncode,
+        "detail": short_output(output),
     }
 
 

@@ -30,6 +30,26 @@ tasks:
     cmds:
       - 'echo "test:browser skeleton ready at tests/browser/browser-permissions.spec.ts; install Playwright before running real browser tests"'
 
+  approval:queue:
+    desc: Print pending external approval requests.
+    cmds:
+      - python3 scripts/wsl/approval_queue.py queue || python scripts/wsl/approval_queue.py queue
+
+  approval:status:
+    desc: Print approval queue status counts.
+    cmds:
+      - python3 scripts/wsl/approval_queue.py status || python scripts/wsl/approval_queue.py status
+
+  e2e:dry-run:
+    desc: Preview text intent routing without executing actions.
+    cmds:
+      - 'python3 scripts/wsl/e2e_dry_run.py --intent "{{.INTENT | default ""}}" || python scripts/wsl/e2e_dry_run.py --intent "{{.INTENT | default ""}}"'
+
+  voice:dry-run:
+    desc: Preview voice utterance routing without executing actions.
+    cmds:
+      - 'python3 scripts/wsl/voice_dry_run.py --utterance "{{.INTENT | default ""}}" || python scripts/wsl/voice_dry_run.py --utterance "{{.INTENT | default ""}}"'
+
   debug:once:
     desc: Run one read-only debug monitor pass.
     cmds:

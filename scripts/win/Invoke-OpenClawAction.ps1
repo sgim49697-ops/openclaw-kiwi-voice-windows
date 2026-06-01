@@ -24,6 +24,10 @@ $AllowedTaskRecipes = @(
   "schema:validate",
   "eval:intents",
   "test:browser",
+  "approval:queue",
+  "approval:status",
+  "e2e:dry-run",
+  "voice:dry-run",
   "browser:doctor",
   "openclaw:doctor"
 )

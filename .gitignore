@@ -5,6 +5,8 @@ __pycache__/
 .debugloop/runs/*
 !.debugloop/runs/.gitkeep
 
+.debugloop/queue/**/*.json
+
 .debugloop/artifacts/**
 !.debugloop/artifacts/
 !.debugloop/artifacts/**/

@@ -244,11 +244,11 @@ next manual action
 현재 기준 상태:
 
 ```text
-- Windows Node: Known/Paired/Connected = 1
+- Windows Node: Known/Paired/Connected = 1/1/1
 - Windows Node safe smoke: device.status, system.notify, screen.snapshot 성공
 - Windows Node pending: []
 - 다음 안전 gate: system.run 사용 전 dispatcher-only local exec-policy 적용
-- Browser: unknown method: browser.request
+- Browser: openclaw profile status/open/tabs OK, live snapshot/screenshot timeout
 ```
 
 ---
@@ -362,7 +362,8 @@ dry-run은 dispatcher 자체에 없는 임의 `-DryRun` 인자를 만들지 않�
 현재 차단:
 
 ```text
-openclaw browser status → unknown method: browser.request
+openclaw browser doctor --deep → live-snapshot gateway timeout
+openclaw browser snapshot/screenshot → gateway timeout after 20000ms
 ```
 
 진행 순서:
@@ -547,6 +548,7 @@ text dry-run
 - .debugloop/runs와 .debugloop/artifacts runtime 출력은 gitignore 처리
 - scripts/wsl/debug_monitor.py 추가
 - task debug:once, task debug:monitor 추가
+- debug_monitor.py가 browser status뿐 아니라 live doctor까지 확인
 ```
 
 ### Batch B — repo-local 자동 수정 루프
@@ -566,6 +568,16 @@ text dry-run
 - pending/approved/rejected directory 추가
 - approval:queue/status task 추가
 - agent self-approval 방지 규칙 추가
+```
+
+현재 구현 상태:
+
+```text
+- approval request schema 추가 완료
+- dispatcher payloadHash 검증 추가 완료
+- approval:queue, approval:status task 추가 완료
+- e2e:dry-run, voice:dry-run task 추가 완료
+- .debugloop/queue/*.json runtime request는 gitignore 처리
 ```
 
 ### Batch D — Node / dispatcher deploy
