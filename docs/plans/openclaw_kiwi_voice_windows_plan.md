@@ -386,7 +386,7 @@ api:
   auth:
     enabled: true
     tokens:
-      - token: "CHANGE_THIS_LONG_RANDOM_TOKEN"
+      - token: "REPLACE_WITH_LONG_RANDOM_TOKEN"
         name: "local-admin"
         scopes: ["read", "control", "tts", "speakers", "admin"]
 ```
@@ -416,8 +416,8 @@ openclaw devices approve <KIWI_DEVICE_ID>
 Telegram approval `.env`:
 
 ```dotenv
-KIWI_TELEGRAM_BOT_TOKEN=123456:telegram_bot_token
-KIWI_TELEGRAM_CHAT_ID=123456789
+KIWI_TELEGRAM_BOT_TOKEN=REPLACE_WITH_TELEGRAM_BOT_TOKEN
+KIWI_TELEGRAM_CHAT_ID=REPLACE_WITH_TELEGRAM_CHAT_ID
 ```
 
 ---

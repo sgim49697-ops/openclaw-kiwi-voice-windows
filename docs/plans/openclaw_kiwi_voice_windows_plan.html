@@ -494,7 +494,7 @@ api:
   auth:
     enabled: true
     tokens:
-      - token: &quot;CHANGE_THIS_LONG_RANDOM_TOKEN&quot;
+      - token: &quot;REPLACE_WITH_LONG_RANDOM_TOKEN&quot;
         name: &quot;local-admin&quot;
         scopes: [&quot;read&quot;, &quot;control&quot;, &quot;tts&quot;, &quot;speakers&quot;, &quot;admin&quot;]
 </code></pre>
@@ -511,8 +511,8 @@ openclaw devices approve &lt;KIWI_DEVICE_ID&gt;
 오픈클로, 누가 말하고 있어?
 </code></pre>
 <p>Telegram approval <code>.env</code>:</p>
-<pre><code class="language-dotenv">KIWI_TELEGRAM_BOT_TOKEN=123456:telegram_bot_token
-KIWI_TELEGRAM_CHAT_ID=123456789
+<pre><code class="language-dotenv">KIWI_TELEGRAM_BOT_TOKEN=REPLACE_WITH_TELEGRAM_BOT_TOKEN
+KIWI_TELEGRAM_CHAT_ID=REPLACE_WITH_TELEGRAM_CHAT_ID
 </code></pre>
 <hr />
 <h2>10. 8단계 — 브라우저 자동화 권한 부여: 클릭/입력/스크린샷/페이지 읽기 허용</h2>
