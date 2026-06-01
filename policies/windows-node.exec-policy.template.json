@@ -1,0 +1,14 @@
+{
+  "_description": "Windows Node exec policy template that allows only the central OpenClaw dispatcher wrapper.",
+  "defaultAction": "deny",
+  "rules": [
+    {
+      "pattern": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\\OpenClawActions\\Invoke-OpenClawAction.ps1 -RequestJsonBase64 *",
+      "action": "allow"
+    },
+    {
+      "pattern": "*",
+      "action": "deny"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "_description": "Gateway exec approvals template for OpenClaw voice wrapper work. Keep host and node execution confirmation-first.",
+  "defaultAction": "deny",
+  "ask": "always",
+  "askFallback": "deny",
+  "autoAllowSkills": false,
+  "strictInlineEval": true,
+  "allowlist": [
+    {
+      "name": "windows-central-dispatcher",
+      "pattern": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\\OpenClawActions\\Invoke-OpenClawAction.ps1 -RequestJsonBase64 *",
+      "riskTier": "medium",
+      "requiresApproval": true
+    }
+  ],
+  "safeBins": [],
+  "deniedBins": [
+    "powershell.exe",
+    "pwsh.exe",
+    "cmd.exe",
+    "bash.exe",
+    "python.exe",
+    "node.exe",
+    "npx.cmd",
+    "npm.cmd",
+    "pnpm.cmd"
+  ]
+}
