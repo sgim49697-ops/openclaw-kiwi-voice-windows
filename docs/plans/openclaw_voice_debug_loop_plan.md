@@ -241,10 +241,13 @@ blocked reason
 next manual action
 ```
 
-현재 기준 blocking 상태:
+현재 기준 상태:
 
 ```text
-- Windows Node: Known/Paired/Connected = 0
+- Windows Node: Known/Paired/Connected = 1
+- Windows Node safe smoke: device.status, system.notify, screen.snapshot 성공
+- Windows Node pending: []
+- 다음 안전 gate: system.run 사용 전 dispatcher-only local exec-policy 적용
 - Browser: unknown method: browser.request
 ```
 
@@ -421,6 +424,11 @@ voice/text intent
 
 OpenClaw node 문서 기준으로 node command는 node가 선언한 command와 gateway platform policy 두 gate를 통과해야 한다. camera, location, screen.record 같은 privacy-heavy command는 opt-in 전까지 금지한다.
 
+현재 기준으로 Windows Node 연결과 safe smoke test는 통과했다. 다음 루프 작업은
+`system.run` 실기 테스트가 아니라, Node local exec-policy를 dispatcher-only로 잠그는 것이다.
+Node가 `system.run`, `camera.list`, `location.get`, `screen.snapshot`, `browser.proxy`를 선언하더라도
+자동화 루프는 dispatcher 정책 잠금 전까지 `system.run`, camera, location, screen.record를 호출하지 않는다.
+
 ---
 
 ## 14. Loop 7 — Kiwi Voice Dry-run
@@ -563,10 +571,15 @@ text dry-run
 ### Batch D — Node / dispatcher deploy
 
 ```text
-- Windows Node pairing 완료 후 진행
+- Windows Node pairing 완료 상태에서 진행
+- 기존 Windows Node exec-policy timestamp backup
 - C:\OpenClawActions 배포
 - Windows Node dispatcher-only exec policy 적용
-- notify action만 approved smoke test
+- Gateway approvals locked 상태 재확인
+- dispatcher notify action만 approved smoke test
+- payloadHash mismatch negative test
+- raw powershell/cmd/python -c/node -e deny 확인
+- open_vscode_codex_plan, run_task_recipe, Browser/Kiwi는 다음 batch로 보류
 ```
 
 ### Batch E — Browser / Voice / E2E

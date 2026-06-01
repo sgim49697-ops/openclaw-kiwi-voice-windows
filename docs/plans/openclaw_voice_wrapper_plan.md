@@ -1004,22 +1004,44 @@ task CLI가 설치된 환경에서는 task --list 실행 가능
 
 ### Phase 1 — OpenClaw + Windows Node 연결
 
-- [ ] WSL2 Ubuntu 준비
-- [ ] OpenClaw 설치
-- [ ] Gateway 상태 확인
-- [ ] Windows Node 설치
-- [ ] Node Mode ON
-- [ ] `openclaw devices list`로 node 확인
-- [ ] `openclaw devices approve <id>`
-- [ ] `allowCommands` 최소 구성
+- [x] WSL2 Ubuntu 준비
+- [x] OpenClaw 설치
+- [x] Gateway 상태 확인
+- [x] Gateway exec approvals 잠금
+- [x] Windows Node 설치
+- [x] Gateway URL `ws://127.0.0.1:18789` 적용
+- [x] Node Mode ON
+- [x] `openclaw nodes status`로 node 확인
+- [x] `device.status` smoke test
+- [x] `system.notify` smoke test
+- [x] `screen.snapshot` smoke test
+- [ ] Windows Node local exec-policy dispatcher-only 적용
 
 완료 기준:
 
 ```text
 openclaw gateway status OK
-openclaw devices list에 Windows node 표시
+openclaw nodes status에 Windows node connected 표시
 system.notify 테스트 성공
 screen.snapshot 테스트 성공
+```
+
+현재 상태:
+
+```text
+Known: 1
+Paired: 1
+Connected: 1
+pending: []
+Gateway approvals: allowlist + ask always + deny + autoAllowSkills off
+```
+
+주의:
+
+```text
+Windows Node는 system.run, camera.list, location.get, screen.snapshot 같은 command를 선언한다.
+개인 PC 단독 사용 환경에서는 즉시 외부 노출 사고로 보지 않지만, voice/agent/browser 자동화와
+결합하기 전에는 Windows Node local exec-policy를 dispatcher-only로 잠가야 한다.
 ```
 
 ### Phase 2 — 중앙 wrapper 구현
@@ -1038,6 +1060,61 @@ notify action 성공
 open_url_readonly action 성공
 임의 powershell command 거부
 allowed root 밖 projectPath 거부
+```
+
+### Phase 2.1 — Dispatcher 배포와 Windows Node 정책 잠금
+
+다음 실제 구현 batch다. 목표는 `system.run`을 자유 실행으로 쓰는 것이 아니라,
+Windows Node에서 허용되는 실행 형태를 중앙 dispatcher 하나로 좁히는 것이다.
+
+사전 조건:
+
+```text
+repo clean
+Gateway reachable
+Gateway approvals locked
+Windows Node paired/connected
+PowerShell parser OK for scripts/win/Invoke-OpenClawAction.ps1
+```
+
+작업:
+
+- [ ] 기존 `%LOCALAPPDATA%\OpenClawTray\exec-policy.json` 백업
+- [ ] `C:\OpenClawActions` 생성
+- [ ] `scripts/win/Invoke-OpenClawAction.ps1`을 `C:\OpenClawActions\Invoke-OpenClawAction.ps1`로 복사
+- [ ] `%LOCALAPPDATA%\OpenClawTray\exec-policy.json`에 dispatcher-only 정책 적용
+- [ ] Gateway approvals 잠금 유지 확인
+- [ ] dispatcher `notify` action만 실기 smoke test
+- [ ] `payloadHash` mismatch negative test
+- [ ] raw `powershell`, `cmd`, `python -c`, `node -e` 차단 확인
+
+이번 batch에서 하지 않을 것:
+
+```text
+open_vscode_codex_plan 실기 실행
+run_task_recipe 실기 실행
+browser click/type
+camera/location/screen.record
+Kiwi Voice 통합
+Gateway approval 완화
+```
+
+성공 기준:
+
+```text
+dispatcher notify action만 승인 후 성공
+payloadHash 불일치 payload 거부
+raw shell/interpreter command 거부
+Gateway approvals가 allowlist + ask always + deny + autoAllowSkills off 유지
+```
+
+롤백:
+
+```text
+Windows Node Mode off
+Windows Node exec-policy를 default deny 또는 백업 파일로 복구
+C:\OpenClawActions 배포 파일 제거
+Gateway approvals 재확인
 ```
 
 ### Phase 3 — Browser lane 활성화
@@ -1254,4 +1331,7 @@ assistant: 이 요청은 파일 삭제를 포함한 critical 위험 작업이라
 5. policies/windows-node.exec-policy.template.json
 ```
 
-위 5개는 현재 repo 내부에 적용됐다. 다음 실제 작업은 Windows/OpenClaw 외부 환경에 배포하기 전에 Browser lane 실기 검증, Codex plan action 실기 검증, Kiwi Voice 통합 순서로 진행한다.
+위 5개는 현재 repo 내부에 적용됐다. Windows Node 최소 연결도 완료됐으므로 다음 실제 작업은
+Browser lane이나 Kiwi Voice가 아니라 `C:\OpenClawActions` dispatcher 배포와 Windows Node
+dispatcher-only exec-policy 적용이다. Browser lane, Codex plan action 실기 검증, Kiwi Voice 통합은
+이 안전 gate가 통과된 뒤 순서대로 진행한다.
