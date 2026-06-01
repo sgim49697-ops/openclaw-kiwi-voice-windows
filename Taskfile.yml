@@ -30,6 +30,11 @@ tasks:
     cmds:
       - 'echo "test:browser skeleton ready at tests/browser/browser-permissions.spec.ts; install Playwright before running real browser tests"'
 
+  browser:probe:
+    desc: Run read-only browser lane probe and append ignored JSONL logs.
+    cmds:
+      - python3 scripts/wsl/browser_probe.py || python scripts/wsl/browser_probe.py
+
   approval:queue:
     desc: Print pending external approval requests.
     cmds:
