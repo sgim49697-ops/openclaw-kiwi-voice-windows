@@ -89,6 +89,7 @@ task debug:once           # L0-L1 1회 실행
 task debug:autoloop       # 현재 repo를 스캔하며 safe check/probe/dry-run 반복
 task debug:auto-once      # autoloop 1회 실행
 task debug:agent          # L0-L2 자동 수정 루프
+task debug:agent-once     # L0-L2 자동 수정 루프 1회 실행
 task approval:queue       # 승인 대기 요청 목록 출력
 task approval:status      # 승인 결과 확인
 task e2e:dry-run          # 실제 실행 없이 routing preview
@@ -99,6 +100,8 @@ task browser:probe        # isolated openclaw profile read probe
 `task --watch`는 빠른 read-only check에만 사용한다. long-running child process나 실제 실행 task에는 사용하지 않는다.
 
 `debug:autoloop`는 repo 파일을 직접 수정하지 않는다. 현재 tracked/untracked 파일을 스캔해 정책/스키마/Python compile/dry-run/monitor/probe를 자동 구성하고, 결과를 `.debugloop/runs/autoloop.jsonl`과 `.debugloop/runs/latest-summary.md`에 기록한다. 새 스크립트는 기본적으로 compile만 수행하며, 실행은 allowlisted check 또는 `# debug-autoloop: command=...` marker가 있는 경우에만 자동 편입한다.
+
+`debug:agent`는 autoloop 결과를 입력으로 받아 L2 repair marker가 있는 실패만 자동 수정 대상으로 처리한다. `# debug-autoloop: command=...` marker는 read-only check 전용이며, 자동 수정은 같은 파일의 check marker 실패와 `# debug-agent: repair=python3 <same-file> --repair --confirm-safe-l2` marker가 동시에 있을 때만 실행된다. 수정 허용 경로는 `docs/`, `policies/`, `schemas/`, `tests/`, `evals/`, `scripts/wsl/`로 제한한다.
 
 ---
 
@@ -574,7 +577,18 @@ text dry-run
 - debug:agent task 추가
 - L0-L2 실패만 자동 수정 허용
 - 수정 후 task check, git diff --check
-- 한글 커밋/푸시
+- 검증 통과 시 한글 커밋
+- debug agent 자체는 push하지 않음
+```
+
+현재 구현 상태:
+
+```text
+- scripts/wsl/debug_agent.py 추가
+- task debug:agent, task debug:agent-once 추가
+- autoloop marker를 read-only check marker로 제한
+- repair marker 기반 L2 자동 수정 gate 추가
+- debug_agent.py 결과를 .debugloop/runs/agent.jsonl과 latest-agent-summary.md에 기록
 ```
 
 ### Batch C — approval queue

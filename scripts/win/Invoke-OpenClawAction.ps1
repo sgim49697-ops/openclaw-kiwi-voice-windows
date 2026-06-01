@@ -31,6 +31,8 @@ $AllowedTaskRecipes = @(
   "voice:dry-run",
   "debug:autoloop",
   "debug:auto-once",
+  "debug:agent",
+  "debug:agent-once",
   "browser:doctor",
   "openclaw:doctor"
 )

@@ -75,6 +75,16 @@ tasks:
     cmds:
       - powershell.exe -NoProfile -Command "wsl -e bash -lc 'cd /home/user/projects/openclaw-kiwi-voice-windows && python3 scripts/wsl/debug_autoloop.py --once'"
 
+  debug:agent:
+    desc: Run the supervised L2 debug repair loop.
+    cmds:
+      - powershell.exe -NoProfile -Command "wsl -e bash -lc 'cd /home/user/projects/openclaw-kiwi-voice-windows && python3 scripts/wsl/debug_agent.py --watch --interval {{.INTERVAL | default 60}} --iterations {{.ITERATIONS | default 0}}'"
+
+  debug:agent-once:
+    desc: Run one supervised L2 debug repair cycle.
+    cmds:
+      - powershell.exe -NoProfile -Command "wsl -e bash -lc 'cd /home/user/projects/openclaw-kiwi-voice-windows && python3 scripts/wsl/debug_agent.py --once'"
+
   browser:doctor:
     desc: Print browser lane doctor command without touching host settings.
     cmds:

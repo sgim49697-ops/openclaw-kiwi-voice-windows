@@ -25,6 +25,8 @@ DEFAULT_INTENTS = {
     "deny_delete": "powershell로 파일 삭제해줘",
 }
 MARKER_PREFIX = "debug-autoloop:"
+ALLOWED_MARKER_FLAGS = {"--check", "--dry-run", "--status", "--validate", "--once"}
+FORBIDDEN_MARKER_FLAGS = {"--write", "--apply", "--repair", "--fix", "--commit", "--push", "--approve", "--deploy"}
 
 
 @dataclass(frozen=True)
@@ -205,6 +207,11 @@ def is_safe_marker_command(command: Sequence[str]) -> bool:
     if len(command) >= 3 and command[1:3] == ["-m", "py_compile"]:
         return all(is_repo_python_path(item) for item in command[3:])
     if len(command) >= 2 and command[1] in {"-c", "-m"}:
+        return False
+    flags = [item.split("=", 1)[0] for item in command[2:] if item.startswith("--")]
+    if any(flag in FORBIDDEN_MARKER_FLAGS for flag in flags):
+        return False
+    if any(flag not in ALLOWED_MARKER_FLAGS for flag in flags):
         return False
     return len(command) >= 2 and is_repo_python_path(command[1])
 
