@@ -532,6 +532,15 @@ text dry-run
 - repo 수정 없음
 ```
 
+현재 구현 상태:
+
+```text
+- .debugloop queue/runs/artifacts 기본 구조 추가
+- .debugloop/runs와 .debugloop/artifacts runtime 출력은 gitignore 처리
+- scripts/wsl/debug_monitor.py 추가
+- task debug:once, task debug:monitor 추가
+```
+
 ### Batch B — repo-local 자동 수정 루프
 
 ```text

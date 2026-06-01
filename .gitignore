@@ -1,0 +1,13 @@
+# .gitignore - local runtime outputs for OpenClaw voice wrapper work.
+__pycache__/
+*.py[cod]
+
+.debugloop/runs/*
+!.debugloop/runs/.gitkeep
+
+.debugloop/artifacts/**
+!.debugloop/artifacts/
+!.debugloop/artifacts/**/
+!.debugloop/artifacts/**/.gitkeep
+
+scripts/win/logs/

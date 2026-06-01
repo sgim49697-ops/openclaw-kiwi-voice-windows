@@ -30,6 +30,16 @@ tasks:
     cmds:
       - 'echo "test:browser skeleton ready at tests/browser/browser-permissions.spec.ts; install Playwright before running real browser tests"'
 
+  debug:once:
+    desc: Run one read-only debug monitor pass.
+    cmds:
+      - powershell.exe -NoProfile -Command "wsl -e bash -lc 'cd /home/user/projects/openclaw-kiwi-voice-windows && python3 scripts/wsl/debug_monitor.py --once'"
+
+  debug:monitor:
+    desc: Run the read-only debug monitor loop and append ignored JSONL logs.
+    cmds:
+      - powershell.exe -NoProfile -Command "wsl -e bash -lc 'cd /home/user/projects/openclaw-kiwi-voice-windows && python3 scripts/wsl/debug_monitor.py --watch --interval {{.INTERVAL | default 30}} --iterations {{.ITERATIONS | default 0}}'"
+
   browser:doctor:
     desc: Print browser lane doctor command without touching host settings.
     cmds:
