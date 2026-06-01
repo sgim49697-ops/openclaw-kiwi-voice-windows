@@ -97,7 +97,7 @@ Lane B: Windows command lane
 ## 4. 프로젝트 디렉터리 구조
 
 ```text
-openclaw-voice-ops/
+openclaw-kiwi-voice-windows/
   README.md
   AGENTS.md
   HARNESS.md
@@ -985,17 +985,18 @@ to:   .agents/skills/openclaw-voice-ops/SKILL.md
 
 ### Phase 0 — repo scaffold
 
-- [ ] `openclaw-voice-ops` repo 생성
-- [ ] `AGENTS.md` 작성
-- [ ] `.agents/skills/openclaw-voice-ops/SKILL.md` 작성
-- [ ] `Taskfile.yml` 작성
-- [ ] `policies/`, `scripts/`, `evals/`, `tests/` 생성
+- [x] 현재 `openclaw-kiwi-voice-windows` repo 기준으로 진행
+- [x] `AGENTS.md` 작성
+- [x] `.agents/skills/openclaw-voice-ops/SKILL.md` 작성
+- [x] `Taskfile.yml` 작성
+- [x] `policies/`, `scripts/`, `evals/`, `tests/` 생성
 
 완료 기준:
 
 ```text
-task --list 실행 가능
+Taskfile.yml 존재
 AGENTS.md/SKILL.md 존재
+task CLI가 설치된 환경에서는 task --list 실행 가능
 ```
 
 ### Phase 1 — OpenClaw + Windows Node 연결
@@ -1020,12 +1021,12 @@ screen.snapshot 테스트 성공
 
 ### Phase 2 — 중앙 wrapper 구현
 
-- [ ] `Invoke-OpenClawAction.ps1` 작성
-- [ ] JSON base64url decode 구현
-- [ ] action enum validation 구현
-- [ ] path/url/app/task validation 구현
-- [ ] JSONL logging 구현
-- [ ] Windows Node exec-policy를 dispatcher-only로 설정
+- [x] repo 내부 `scripts/win/Invoke-OpenClawAction.ps1` 작성
+- [x] JSON base64url decode 구현
+- [x] action enum validation 구현
+- [x] path/url/app/task validation 구현
+- [x] JSONL logging 구현
+- [x] Windows Node exec-policy dispatcher-only template 작성
 
 완료 기준:
 
@@ -1036,24 +1037,7 @@ open_url_readonly action 성공
 allowed root 밖 projectPath 거부
 ```
 
-### Phase 3 — Kiwi Voice 연결
-
-- [ ] Kiwi Voice 설치
-- [ ] Korean locale 설정
-- [ ] wake word `오픈클로` 설정
-- [ ] owner voice 등록
-- [ ] Telegram approval 연결
-- [ ] Gateway device approve
-
-완료 기준:
-
-```text
-“오픈클로, 테스트 알림 보내줘” → 계획 → 확인 → 알림
-“취소” → 실행 안 됨
-타인 목소리 medium/high 실행 차단
-```
-
-### Phase 4 — Browser lane 활성화
+### Phase 3 — Browser lane 활성화
 
 - [ ] OpenClaw Browser status 확인
 - [ ] `openclaw` 격리 프로필 사용
@@ -1071,13 +1055,13 @@ snapshot/screenshot 저장 성공
 password/payment/delete/send는 strong confirmation 또는 deny
 ```
 
-### Phase 5 — VS Code + Codex plan wrapper
+### Phase 4 — VS Code + Codex plan wrapper
 
-- [ ] `open_vscode_codex_plan` action 구현
-- [ ] allowed project root 설정
-- [ ] Codex read-only + on-request 고정
-- [ ] `/plan` prompt 고정
-- [ ] 파일 수정 금지 확인
+- [x] `open_vscode_codex_plan` action 구현
+- [x] allowed project root 설정
+- [x] Codex read-only + on-request 고정
+- [x] `/plan` prompt 고정
+- [ ] Windows 환경에서 파일 수정 금지 확인
 
 완료 기준:
 
@@ -1088,20 +1072,37 @@ C:\Windows 등 허용 root 밖 경로 거부
 Codex danger-full-access 사용 불가
 ```
 
-### Phase 6 — Harness 추가
+### Phase 5 — Harness 추가
 
-- [ ] promptfoo eval 작성
-- [ ] Playwright browser smoke test 작성
-- [ ] policy validator 작성
-- [ ] Taskfile에 check 묶기
-- [ ] Superpowers는 coding tasks에만 적용
+- [x] promptfoo eval skeleton 작성
+- [x] Playwright browser smoke test skeleton 작성
+- [x] policy validator 작성
+- [x] Taskfile에 check 묶기
+- [x] Superpowers는 coding tasks에만 적용
 
 완료 기준:
 
 ```text
-task check 통과
-위험 음성 명령 eval 통과
-브라우저 권한 test 통과
+task check 통과 또는 task CLI 미설치 시 개별 validator 통과
+위험 음성 명령 eval skeleton 존재
+브라우저 권한 test skeleton 존재
+```
+
+### Phase 6 — Kiwi Voice 연결
+
+- [ ] Kiwi Voice 설치
+- [ ] Korean locale 설정
+- [ ] wake word `오픈클로` 설정
+- [ ] owner voice 등록
+- [ ] Telegram approval 연결
+- [ ] Gateway device approve
+
+완료 기준:
+
+```text
+“오픈클로, 테스트 알림 보내줘” → 계획 → 확인 → 알림
+“취소” → 실행 안 됨
+타인 목소리 medium/high 실행 차단
 ```
 
 ### Phase 7 — 관측/확장
@@ -1238,9 +1239,9 @@ assistant: 이 요청은 파일 삭제를 포함한 critical 위험 작업이라
 
 ---
 
-## 26. 다음에 바로 만들 파일 순서
+## 26. 초기 적용 파일과 다음 순서
 
-이 계획서 다음 실제 작업은 아래 5개 파일부터 만든다.
+이 계획서의 초기 repo 내부 적용은 아래 파일들부터 시작한다.
 
 ```text
 1. AGENTS.md
@@ -1250,4 +1251,4 @@ assistant: 이 요청은 파일 삭제를 포함한 critical 위험 작업이라
 5. policies/windows-node.exec-policy.template.json
 ```
 
-이 5개가 완성되면 그 다음에 Kiwi Voice 설정, promptfoo eval, Playwright browser test를 붙인다.
+위 5개는 현재 repo 내부에 적용됐다. 다음 실제 작업은 Windows/OpenClaw 외부 환경에 배포하기 전에 Browser lane 실기 검증, Codex plan action 실기 검증, Kiwi Voice 통합 순서로 진행한다.

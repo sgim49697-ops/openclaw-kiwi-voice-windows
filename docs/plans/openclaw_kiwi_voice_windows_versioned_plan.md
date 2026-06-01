@@ -20,10 +20,10 @@
 | v0 | 문서와 기준선 정리 | `docs/plans` 정리, 버전 계획 | 계획 파일 위치와 진행 순서 확정 |
 | v1 | WSL2 + Gateway 기반 구축 | Ubuntu 24.04, OpenClaw Gateway | `openclaw doctor`, `gateway status` 통과 |
 | v2 | Windows Node 최소 연결 | Node pairing, 알림/상태 확인 | `device.status`, `system.notify` 성공 |
-| v3 | 실행 권한 경계 잠금 | wrapper-only `system.run`, exec approvals | 임의 명령 차단, wrapper 명령만 승인 후 실행 |
+| v3 | 실행 권한 경계 잠금 | central dispatcher-only `system.run`, exec approvals | 임의 명령 차단, dispatcher action만 승인 후 실행 |
 | v4 | 브라우저 read 자동화 | 격리 `openclaw` 프로필, snapshot/screenshot | 안전 페이지 읽기와 스크린샷 성공 |
 | v5 | 브라우저 interact 자동화 | click/type/fill/select 정책 | 테스트 페이지에서 클릭/입력 성공, side-effect 차단 |
-| v6 | VS Code + Codex plan 연동 | `Open-VSCodeCodexPlan.ps1` | read-only `/plan` 실행 성공 |
+| v6 | VS Code + Codex plan 연동 | `open_vscode_codex_plan` dispatcher action | read-only `/plan` 실행 성공 |
 | v7 | Kiwi Voice 통합 | Windows native Kiwi, speaker ID, Telegram approval | 음성 호출이 planner 승인 흐름까지 도달 |
 | v8 | 운영 안정화 | 로그/백업/롤백/정책 문서화 | end-to-end smoke test와 롤백 절차 확인 |
 
@@ -127,16 +127,17 @@ openclaw nodes invoke --node <WINDOWS_NODE_ID> --command screen.snapshot --param
 - Windows 알림과 상태 조회가 성공한다.
 - `screen.snapshot`은 동작하지만 `screen.record`, camera, location 계열은 노출하지 않는다.
 
-## v3 - `system.run` Wrapper-Only + Exec Approvals
+## v3 - Central Dispatcher-Only `system.run` + Exec Approvals
 
 ### 목표
 
-Windows에서 실행 가능한 명령을 wrapper script로 제한하고, Gateway와 Node 양쪽 approval 경계를 확인한다.
+Windows에서 실행 가능한 명령을 단일 central dispatcher wrapper로 제한하고, Gateway와 Node 양쪽 approval 경계를 확인한다.
 
 ### 작업
 
-- `C:\OpenClawActions` 디렉터리 생성
-- wrapper script 초안 작성
+- repo 내부 `scripts/win/Invoke-OpenClawAction.ps1` 초안 작성
+- 배포 시에만 `C:\OpenClawActions\Invoke-OpenClawAction.ps1`로 복사
+- dispatcher action enum을 `notify`, `open_url_readonly`, `open_vscode_codex_plan`, `open_app_allowlisted`, `run_task_recipe`로 제한
 - Windows Node `exec-policy.json`을 기본 deny로 설정
 - Gateway `exec-approvals.json` 또는 `tools.exec.*` 정책을 보수적으로 설정
 - `system.run`을 `allowCommands`에 추가
@@ -144,17 +145,14 @@ Windows에서 실행 가능한 명령을 wrapper script로 제한하고, Gateway
 ### 권장 wrapper
 
 ```text
-C:\OpenClawActions\Open-VSCodeCodexPlan.ps1
-C:\OpenClawActions\Open-UrlReadOnly.ps1
-C:\OpenClawActions\Open-AppAllowlisted.ps1
-C:\OpenClawActions\Show-Notification.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\OpenClawActions\Invoke-OpenClawAction.ps1 -RequestJsonBase64 <request>
 ```
 
 ### 권장 정책
 
 ```text
 default: deny
-allowlist: wrapper script only
+allowlist: central dispatcher command only
 ask: always
 askFallback: deny
 autoAllowSkills: false
@@ -171,13 +169,13 @@ openclaw nodes invoke --node <WINDOWS_NODE_ID> --command system.execApprovals.ge
 
 테스트는 두 갈래로 한다.
 
-- 허용 wrapper: 승인 후 실행되어야 한다.
+- 허용 dispatcher action: 승인 후 실행되어야 한다.
 - 임의 명령: 차단되어야 한다.
 
 ### 완료 조건
 
 - 임의 `powershell`, `cmd`, `python -c`, `node -e` 실행이 자동 통과하지 않는다.
-- wrapper 명령도 사용자 승인 없이는 실행되지 않는다.
+- dispatcher 명령도 사용자 승인 없이는 실행되지 않는다.
 - 실패 시 전체 차단 정책으로 즉시 롤백할 수 있다.
 
 ## v4 - 브라우저 `browse-read`
@@ -271,7 +269,7 @@ scroll
 
 ### 작업
 
-- `Open-VSCodeCodexPlan.ps1` 작성
+- `Invoke-OpenClawAction.ps1`의 `open_vscode_codex_plan` action 구현
 - 허용 프로젝트 루트 제한
 - `code -r`로 VS Code 열기
 - Codex CLI를 read-only sandbox와 approval on-request로 실행
@@ -281,9 +279,8 @@ scroll
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass `
-  -File C:\OpenClawActions\Open-VSCodeCodexPlan.ps1 `
-  -ProjectPath "C:\dev\test" `
-  -Task "프로젝트 구조를 읽고 리팩토링 계획만 세워줘"
+  -File C:\OpenClawActions\Invoke-OpenClawAction.ps1 `
+  -RequestJsonBase64 "<open_vscode_codex_plan request>"
 ```
 
 ### 완료 조건
@@ -376,7 +373,7 @@ python -m kiwi
 2. VS Code에서 프로젝트 열고 Codex 계획 요청
 3. planner가 read-only plan 작업 요약
 4. 사용자가 승인
-5. wrapper-only system.run 승인
+5. dispatcher-only system.run 승인
 6. VS Code와 Codex plan 실행
 7. 파일 수정 없이 종료
 ```
