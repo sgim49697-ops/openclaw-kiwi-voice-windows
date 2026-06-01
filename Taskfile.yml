@@ -6,6 +6,7 @@ tasks:
     desc: Run safe local project checks.
     cmds:
       - task: policy:validate
+      - task: schema:validate
       - task: eval:intents
       - task: test:browser
 
@@ -13,6 +14,11 @@ tasks:
     desc: Validate local policy templates when validators exist.
     cmds:
       - python3 tests/policy/validate_policy.py policies/openclaw.exec-approvals.template.json policies/windows-node.exec-policy.template.json || python tests/policy/validate_policy.py policies/openclaw.exec-approvals.template.json policies/windows-node.exec-policy.template.json
+
+  schema:validate:
+    desc: Validate local JSON schema guards.
+    cmds:
+      - python3 tests/policy/validate_schemas.py schemas/approval-request.schema.json schemas/openclaw-action-request.schema.json || python tests/policy/validate_schemas.py schemas/approval-request.schema.json schemas/openclaw-action-request.schema.json
 
   eval:intents:
     desc: Run voice intent and risk evals when promptfoo config exists.

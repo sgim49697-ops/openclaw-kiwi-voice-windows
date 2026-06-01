@@ -46,7 +46,7 @@ Lane A: Browser automation lane
 Lane B: Windows command lane
   - OpenClaw Windows Node
   - allowed command: central dispatcher wrapper only
-  - dispatcher validates action enum, args, paths, URLs, risk tier
+  - dispatcher validates action enum, args, paths, URLs, risk tier, payload hash
   - no raw PowerShell / cmd / bash from agent
 ```
 
@@ -133,6 +133,7 @@ openclaw-kiwi-voice-windows/
       export-approvals.sh
 
   schemas/
+    approval-request.schema.json
     openclaw-action-request.schema.json
 
   evals/
@@ -181,7 +182,8 @@ agent는 `cmd.exe`, `powershell -Command`, `bash -c`, `python -c`, `node -e`, `n
   "approvalMethod": "voice|telegram|manual",
   "riskTier": "low|medium|high|critical",
   "action": "notify|open_url_readonly|open_vscode_codex_plan|open_app_allowlisted|run_task_recipe",
-  "params": {}
+  "params": {},
+  "payloadHash": "sha256:<canonical-payload-sha256>"
 }
 ```
 
@@ -856,7 +858,8 @@ planner가 사용자에게 보여줄 확인문:
   "params": {
     "projectPath": "C:\\dev\\shop",
     "task": "결제 오류 수정 계획 세워줘"
-  }
+  },
+  "payloadHash": "sha256:2b861b4b5660943e5b81499a2a2cd3bc51774808c9c6a0ad273f370479b6a00f"
 }
 ```
 

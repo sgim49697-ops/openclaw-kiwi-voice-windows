@@ -21,6 +21,7 @@ $AllowedApps = @{
 $AllowedTaskRecipes = @(
   "check",
   "policy:validate",
+  "schema:validate",
   "eval:intents",
   "test:browser",
   "browser:doctor",
@@ -37,6 +38,7 @@ $AllowedActions = @(
 
 $AllowedApprovalMethods = @("voice", "telegram", "manual")
 $AllowedRiskTiers = @("low", "medium", "high", "critical")
+$PayloadHashPattern = "^sha256:[a-f0-9]{64}$"
 
 function Decode-Base64UrlJson {
   param(
@@ -76,6 +78,157 @@ function Get-RequiredProperty {
   }
 
   return $property.Value
+}
+
+function ConvertTo-CanonicalJsonString {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Value
+  )
+
+  $builder = [Text.StringBuilder]::new()
+  [void]$builder.Append('"')
+
+  foreach ($char in $Value.ToCharArray()) {
+    $code = [int][char]$char
+    switch ($code) {
+      8 { [void]$builder.Append('\b') }
+      9 { [void]$builder.Append('\t') }
+      10 { [void]$builder.Append('\n') }
+      12 { [void]$builder.Append('\f') }
+      13 { [void]$builder.Append('\r') }
+      34 { [void]$builder.Append('\"') }
+      92 { [void]$builder.Append('\\') }
+      default {
+        if ($code -lt 32) {
+          [void]$builder.Append(('\u{0:x4}' -f $code))
+        } else {
+          [void]$builder.Append($char)
+        }
+      }
+    }
+  }
+
+  [void]$builder.Append('"')
+  return $builder.ToString()
+}
+
+function ConvertTo-CanonicalJson {
+  param(
+    [AllowNull()]
+    [object]$Value
+  )
+
+  if ($null -eq $Value) {
+    return "null"
+  }
+
+  if ($Value -is [string]) {
+    return ConvertTo-CanonicalJsonString $Value
+  }
+
+  if ($Value -is [bool]) {
+    if ($Value) {
+      return "true"
+    }
+    return "false"
+  }
+
+  if ($Value -is [byte] -or
+      $Value -is [sbyte] -or
+      $Value -is [int16] -or
+      $Value -is [uint16] -or
+      $Value -is [int] -or
+      $Value -is [uint32] -or
+      $Value -is [long] -or
+      $Value -is [uint64] -or
+      $Value -is [float] -or
+      $Value -is [double] -or
+      $Value -is [decimal]) {
+    return [Convert]::ToString($Value, [Globalization.CultureInfo]::InvariantCulture)
+  }
+
+  if ($Value -is [System.Collections.IDictionary]) {
+    $parts = @()
+    foreach ($key in ($Value.Keys | Sort-Object)) {
+      $encodedKey = ConvertTo-CanonicalJsonString ([string]$key)
+      $encodedValue = ConvertTo-CanonicalJson $Value[$key]
+      $parts += "$encodedKey`:$encodedValue"
+    }
+    return "{$($parts -join ',')}"
+  }
+
+  if ($Value -is [pscustomobject]) {
+    $parts = @()
+    foreach ($property in ($Value.PSObject.Properties.Name | Sort-Object)) {
+      $encodedKey = ConvertTo-CanonicalJsonString $property
+      $encodedValue = ConvertTo-CanonicalJson $Value.PSObject.Properties[$property].Value
+      $parts += "$encodedKey`:$encodedValue"
+    }
+    return "{$($parts -join ',')}"
+  }
+
+  if ($Value -is [System.Collections.IEnumerable] -and -not ($Value -is [string])) {
+    $items = @()
+    foreach ($item in $Value) {
+      $items += ConvertTo-CanonicalJson $item
+    }
+    return "[$($items -join ',')]"
+  }
+
+  return ConvertTo-CanonicalJsonString ([string]$Value)
+}
+
+function Get-Sha256Hex {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Value
+  )
+
+  $sha = [Security.Cryptography.SHA256]::Create()
+  try {
+    $bytes = [Text.Encoding]::UTF8.GetBytes($Value)
+    $hashBytes = $sha.ComputeHash($bytes)
+    return (($hashBytes | ForEach-Object { $_.ToString("x2") }) -join "")
+  } finally {
+    $sha.Dispose()
+  }
+}
+
+function Get-RequestPayloadHash {
+  param(
+    [Parameter(Mandatory = $true)]
+    [object]$Request
+  )
+
+  $payload = [ordered]@{
+    action = [string](Get-RequiredProperty $Request "action")
+    params = $Request.params
+    requestId = [string](Get-RequiredProperty $Request "requestId")
+    riskTier = [string](Get-RequiredProperty $Request "riskTier")
+    source = [string](Get-RequiredProperty $Request "source")
+    version = [int](Get-RequiredProperty $Request "version")
+  }
+
+  $json = ConvertTo-CanonicalJson $payload
+  return "sha256:$(Get-Sha256Hex $json)"
+}
+
+function Assert-PayloadHash {
+  param(
+    [Parameter(Mandatory = $true)]
+    [object]$Request
+  )
+
+  $expected = [string](Get-RequiredProperty $Request "payloadHash")
+  if ($expected -cnotmatch $PayloadHashPattern) {
+    throw "Invalid payloadHash format."
+  }
+
+  $actual = Get-RequestPayloadHash $Request
+  if ($expected -cne $actual) {
+    throw "payloadHash mismatch."
+  }
 }
 
 function Assert-ApprovedRequest {
@@ -121,6 +274,8 @@ function Assert-ApprovedRequest {
   if ($null -eq $Request.PSObject.Properties["params"]) {
     $Request | Add-Member -NotePropertyName "params" -NotePropertyValue ([pscustomobject]@{})
   }
+
+  Assert-PayloadHash $Request
 }
 
 function Assert-AllowedPath {
@@ -183,6 +338,7 @@ function Write-ActionLog {
     approvalMethod = $Request.approvalMethod
     status = $Status
     message = $Message
+    payloadHash = $Request.payloadHash
   }
 
   $line = $entry | ConvertTo-Json -Compress -Depth 10
