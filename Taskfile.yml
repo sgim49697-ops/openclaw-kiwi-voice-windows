@@ -65,6 +65,16 @@ tasks:
     cmds:
       - powershell.exe -NoProfile -Command "wsl -e bash -lc 'cd /home/user/projects/openclaw-kiwi-voice-windows && python3 scripts/wsl/debug_monitor.py --watch --interval {{.INTERVAL | default 30}} --iterations {{.ITERATIONS | default 0}}'"
 
+  debug:autoloop:
+    desc: Run the self-discovering safe debug loop.
+    cmds:
+      - powershell.exe -NoProfile -Command "wsl -e bash -lc 'cd /home/user/projects/openclaw-kiwi-voice-windows && python3 scripts/wsl/debug_autoloop.py --watch --interval {{.INTERVAL | default 60}} --iterations {{.ITERATIONS | default 0}}'"
+
+  debug:auto-once:
+    desc: Run one self-discovering safe debug loop cycle.
+    cmds:
+      - powershell.exe -NoProfile -Command "wsl -e bash -lc 'cd /home/user/projects/openclaw-kiwi-voice-windows && python3 scripts/wsl/debug_autoloop.py --once'"
+
   browser:doctor:
     desc: Print browser lane doctor command without touching host settings.
     cmds:

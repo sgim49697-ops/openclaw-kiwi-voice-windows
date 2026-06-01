@@ -29,6 +29,8 @@ $AllowedTaskRecipes = @(
   "approval:status",
   "e2e:dry-run",
   "voice:dry-run",
+  "debug:autoloop",
+  "debug:auto-once",
   "browser:doctor",
   "openclaw:doctor"
 )
