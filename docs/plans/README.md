@@ -9,6 +9,7 @@
 | `openclaw_kiwi_voice_windows_plan.md` | 전체 구성 계획 원문 |
 | `openclaw_kiwi_voice_windows_plan.html` | 전체 구성 계획 HTML 렌더링본 |
 | `openclaw_kiwi_voice_windows_versioned_plan.md` | 추천 진행 순서를 버전 단위로 나눈 실행 로드맵 |
+| `openclaw_voice_debug_loop_plan.md` | 자동 디버그 agent와 외부 승인 큐 기반 검증 루프 |
 
 ## 진행 기준
 
