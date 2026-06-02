@@ -75,9 +75,11 @@ Voice dry-run:
   - 실제 Kiwi 설치와 마이크/STT/speaker ID는 v7.1로 분리
 
 Kiwi v7.1 prep:
-  - Windows uv, Python 3.12, git 감지
-  - nvidia-smi 감지
-  - ffmpeg.exe 미감지로 실제 Kiwi clone/install/startup은 중단
+  - Windows uv, Python 3.12, git, FFmpeg, OpenClaw CLI 감지
+  - nvidia-smi 감지, PyTorch CUDA 12.8 wheel 설치 후 CUDA available 확인
+  - C:\Users\ksg63\projects\kiwi-voice clone + uv venv + requirements 설치 완료
+  - Kiwi dashboard http://127.0.0.1:7789 reachable, Playwright snapshot에서 Kiwi Voice 확인
+  - Gateway v4와 Kiwi Gateway v3 WebSocket mismatch 때문에 v7.1은 Windows OpenClaw CLI fallback으로 기동
   - repo-local Kiwi Windows readiness probe, config template, transcript dry-run bridge 추가
 ```
 
@@ -525,9 +527,10 @@ python3 scripts/wsl/voice_dry_run.py --utterance "오픈클로, 결제하고 Gma
 상태:
 
 ```text
-Windows tools: uv, python 3.12, git available
-Kiwi repo: C:\Users\ksg63\projects\kiwi-voice not cloned
-Blocker: ffmpeg.exe is not available on Windows PATH
+Windows tools: uv, python 3.12, git, FFmpeg, OpenClaw CLI available
+Kiwi repo: C:\Users\ksg63\projects\kiwi-voice cloned
+Kiwi venv: created with uv
+Dashboard: reachable at http://127.0.0.1:7789
 Repo prep: kiwi_windows_probe.py, kiwi_transcript_dry_run.py, config.yaml.template 추가
 ```
 
@@ -540,7 +543,8 @@ Repo prep: kiwi_windows_probe.py, kiwi_transcript_dry_run.py, config.yaml.templa
 - `config.yaml`에 한국어, faster-whisper, text wake word 설정
 - speaker ID owner 등록
 - Telegram approval 설정
-- Kiwi device를 OpenClaw Gateway에 승인
+- Gateway v4 호환 Kiwi WebSocket 경로 또는 CLI fallback 유지 여부 결정
+- Kiwi owner voice registration 준비
 
 진행 gate:
 
@@ -548,7 +552,7 @@ Repo prep: kiwi_windows_probe.py, kiwi_transcript_dry_run.py, config.yaml.templa
 python3 scripts/wsl/kiwi_windows_probe.py
 ```
 
-`ffmpeg.exe`가 Windows PATH에 잡히기 전에는 Kiwi clone/install/startup을 진행하지 않는다.
+`kiwi_windows_probe.py`가 ready가 아니면 v7.2 마이크/STT/speaker owner 등록으로 넘어가지 않는다.
 
 ### Windows 설치 원칙
 

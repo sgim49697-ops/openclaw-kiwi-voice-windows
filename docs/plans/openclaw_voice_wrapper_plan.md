@@ -1176,19 +1176,20 @@ task check 통과 또는 task CLI 미설치 시 개별 validator 통과
 
 - [x] v7.0 voice dry-run contract 정리
 - [x] v7.1 Windows Kiwi readiness probe / config template / transcript dry-run bridge 추가
-- [ ] Windows FFmpeg 설치 및 PATH 확인
-- [ ] Kiwi Voice 설치
-- [ ] Korean locale 설정
-- [ ] wake word `오픈클로` 설정
+- [x] Windows FFmpeg 설치 및 PATH 확인
+- [x] Kiwi Voice 설치
+- [x] Korean locale 설정
+- [x] wake word `오픈클로` 설정
+- [x] Dashboard 확인
 - [ ] owner voice 등록
 - [ ] Telegram approval 연결
-- [ ] Gateway device approve
+- [ ] Gateway v4 WebSocket 호환 또는 CLI fallback 유지 결정
 
 완료 기준:
 
 ```text
 voice_e2e_probe.py로 notify/Codex/browser/cancel/critical deny dry-run 통과
-kiwi_windows_probe.py에서 ffmpeg.exe blocker 해소
+kiwi_windows_probe.py에서 ready 상태 확인
 “오픈클로, 테스트 알림 보내줘” → 계획 → 확인 → 알림
 “취소” → 실행 안 됨
 타인 목소리 medium/high 실행 차단

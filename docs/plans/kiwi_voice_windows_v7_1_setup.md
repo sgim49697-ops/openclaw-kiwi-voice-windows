@@ -8,9 +8,11 @@
 Gateway: running, loopback-only 127.0.0.1:18789
 Gateway approvals: allowlist + ask=always + askFallback=deny + autoAllowSkills=off
 Windows Node: paired + connected
-Windows tools: uv, python 3.12, git available
-Kiwi path: C:\Users\ksg63\projects\kiwi-voice not cloned yet
-Blocker: ffmpeg.exe is not available on Windows PATH
+Windows tools: uv, python 3.12, git, FFmpeg, OpenClaw CLI available
+Kiwi path: C:\Users\ksg63\projects\kiwi-voice cloned
+Kiwi venv: created with uv
+Dashboard: http://127.0.0.1:7789 reachable
+Blocker: none for v7.1; v7.2 still needs live microphone/owner voice registration
 ```
 
 v7.1은 Kiwi 설치와 startup 준비까지만 다룬다. Kiwi에서 실제 dispatcher 실행, `system.run`, browser action, Codex execution은 하지 않는다.
@@ -44,6 +46,8 @@ ffmpeg -version
 
 Do not proceed to Kiwi install until FFmpeg is on PATH.
 
+In this WSL-launched Windows shell, a newly installed winget binary may require refreshing Machine/User PATH. The repo probe does that automatically before checking commands.
+
 ## Install Commands
 
 Use PowerShell in Windows:
@@ -60,13 +64,16 @@ uv pip install -r requirements.txt
 copy .env.example .env
 ```
 
-If PyTorch must be installed manually, use the CUDA 12.8 index:
+Install PyTorch with the CUDA 12.8 index before the general requirements so it does not fall back to a CPU wheel:
 
 ```powershell
 uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
+uv pip install -r requirements.txt
 ```
 
 Copy `templates/kiwi/config.yaml.template` into the Kiwi repo as `config.yaml`, then adjust only local device fields if needed.
+
+Current OpenClaw Gateway uses protocol v4 while this Kiwi checkout still has a Gateway v3 WebSocket client. For v7.1, `websocket.enabled=false` and `KIWI_WS_ENABLED=false` are used so Kiwi starts through the Windows OpenClaw CLI fallback. Direct dispatcher execution remains out of scope.
 
 ## Dry-run Bridge
 
@@ -96,3 +103,8 @@ python -m kiwi
 ```
 
 Then use the dashboard at `http://localhost:7789` for microphone, wake word, and owner voice registration. Telegram approval remains unset until a later explicit secrets batch.
+
+Known v7.2 notes:
+
+- Silero VAD may prompt for trusting `snakers4_silero-vad`; current run fell back to energy-only VAD.
+- `pyannote/embedding` is gated on Hugging Face, so speaker ID owner registration needs a local model or approved token later.

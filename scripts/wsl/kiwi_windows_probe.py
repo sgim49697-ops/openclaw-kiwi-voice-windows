@@ -13,8 +13,13 @@ DEFAULT_DASHBOARD_URL = "http://127.0.0.1:7789"
 
 
 def run_powershell(script: str, timeout: int = 30) -> subprocess.CompletedProcess[str]:
+    path_refresh = (
+        "$machinePath=[Environment]::GetEnvironmentVariable('Path','Machine'); "
+        "$userPath=[Environment]::GetEnvironmentVariable('Path','User'); "
+        "$env:Path=($machinePath,$userPath,$env:Path -join ';'); "
+    )
     return subprocess.run(
-        ["powershell.exe", "-NoProfile", "-Command", script],
+        ["powershell.exe", "-NoProfile", "-Command", path_refresh + script],
         check=False,
         text=True,
         encoding="utf-8",
@@ -28,7 +33,7 @@ def run_powershell(script: str, timeout: int = 30) -> subprocess.CompletedProces
 def get_command_inventory() -> list[dict[str, Any]]:
     script = (
         "$ErrorActionPreference='SilentlyContinue'; "
-        "$names=@('uv','python','py','git','ffmpeg','kiwi','nvidia-smi'); "
+        "$names=@('uv','python','py','git','ffmpeg','openclaw','kiwi','nvidia-smi'); "
         "Get-Command $names | "
         "Select-Object Name,Source,Version | ConvertTo-Json -Compress"
     )
@@ -85,6 +90,8 @@ def build_report(args: argparse.Namespace) -> dict[str, Any]:
         blockers.append("git is not available on Windows PATH")
     if "ffmpeg.exe" not in commands_by_name:
         blockers.append("ffmpeg is not available on Windows PATH")
+    if "openclaw.cmd" not in commands_by_name and "openclaw.ps1" not in commands_by_name:
+        blockers.append("openclaw CLI is not available on Windows PATH")
     if not kiwi_root_exists:
         blockers.append(f"Kiwi repo is not cloned at {args.kiwi_path}")
     elif not venv_exists:
@@ -102,12 +109,20 @@ def build_report(args: argparse.Namespace) -> dict[str, Any]:
         },
         "dashboard": dashboard,
         "blockers": blockers,
-        "nextManualSteps": [
-            "Install FFmpeg and ensure ffmpeg.exe is on PATH if missing.",
-            "Clone Kiwi Voice to the fixed Windows path.",
-            "Run uv venv venv and uv pip install -r requirements.txt from the Kiwi repo.",
-            "Copy .env.example to .env and keep secrets out of this repo.",
-        ],
+        "nextManualSteps": (
+            [
+                "Install FFmpeg and ensure ffmpeg.exe is on PATH if missing.",
+                "Install OpenClaw CLI on Windows if missing.",
+                "Clone Kiwi Voice to the fixed Windows path.",
+                "Run uv venv venv and uv pip install -r requirements.txt from the Kiwi repo.",
+                "Copy .env.example to .env and keep secrets out of this repo.",
+            ]
+            if blockers
+            else [
+                "Run python -m kiwi from the Windows Kiwi repo.",
+                "Open http://127.0.0.1:7789 and verify the dashboard before v7.2 microphone work.",
+            ]
+        ),
     }
 
 

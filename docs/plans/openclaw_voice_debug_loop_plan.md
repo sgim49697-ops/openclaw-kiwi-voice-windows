@@ -521,7 +521,10 @@ v7.1 gate:
 
 ```text
 python3 scripts/wsl/kiwi_windows_probe.py
-ffmpeg.exe가 Windows PATH에 없으면 Kiwi clone/install/startup 중단
+v7.1 result: FFmpeg 설치, Kiwi clone, uv venv, requirements 설치 완료
+Windows OpenClaw CLI fallback으로 Kiwi startup 성공
+Dashboard http://127.0.0.1:7789 reachable, Playwright snapshot OK
+Gateway v4와 Kiwi Gateway v3 WebSocket client는 protocol mismatch로 별도 추적
 STT transcript는 scripts/wsl/kiwi_transcript_dry_run.py로 dry-run routing 확인
 ```
 
