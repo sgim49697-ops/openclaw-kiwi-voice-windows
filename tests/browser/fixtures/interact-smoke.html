@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OpenClaw Interact Smoke</title>
+    <style>
+      body {
+        color: #202124;
+        font-family: Arial, sans-serif;
+        line-height: 1.5;
+        margin: 2rem;
+        max-width: 720px;
+      }
+
+      main {
+        display: grid;
+        gap: 1rem;
+      }
+
+      label {
+        display: grid;
+        gap: 0.35rem;
+      }
+
+      button,
+      input,
+      select {
+        font: inherit;
+        max-width: 24rem;
+        padding: 0.45rem 0.55rem;
+      }
+
+      #status {
+        background: #eef5ff;
+        border: 1px solid #8ab4f8;
+        min-height: 3rem;
+        padding: 0.75rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>OpenClaw Interact Smoke</h1>
+
+      <p id="status" aria-live="polite">Ready for interact smoke.</p>
+
+      <button id="click-target" aria-label="Smoke Click Button" type="button">
+        Smoke Click Button
+      </button>
+
+      <label>
+        Smoke Type Input
+        <input id="type-target" aria-label="Smoke Type Input" autocomplete="off" />
+      </label>
+
+      <form id="smoke-form">
+        <label>
+          Smoke Fill Input
+          <input id="fill-target" aria-label="Smoke Fill Input" autocomplete="off" />
+        </label>
+      </form>
+
+      <label>
+        Smoke Select Box
+        <select id="select-target" aria-label="Smoke Select Box">
+          <option value="alpha">Alpha Option</option>
+          <option value="bravo">Bravo Option</option>
+          <option value="charlie">Charlie Option</option>
+        </select>
+      </label>
+    </main>
+
+    <script>
+      const status = document.getElementById("status");
+      const clickTarget = document.getElementById("click-target");
+      const typeTarget = document.getElementById("type-target");
+      const fillTarget = document.getElementById("fill-target");
+      const selectTarget = document.getElementById("select-target");
+      const form = document.getElementById("smoke-form");
+
+      clickTarget.addEventListener("click", () => {
+        status.textContent = "click: Smoke Click Button clicked";
+      });
+
+      typeTarget.addEventListener("input", () => {
+        status.textContent = `type: ${typeTarget.value}`;
+      });
+
+      fillTarget.addEventListener("input", () => {
+        status.textContent = `fill: ${fillTarget.value}`;
+      });
+
+      selectTarget.addEventListener("change", () => {
+        status.textContent = `select: ${selectTarget.value}`;
+      });
+
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        status.textContent = "submit prevented";
+      });
+    </script>
+  </body>
+</html>

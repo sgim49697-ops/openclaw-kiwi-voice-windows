@@ -257,7 +257,7 @@ next manual action
 - Windows Node safe smoke: device.status, system.notify, screen.snapshot 성공
 - Windows Node pending: []
 - 다음 안전 gate: system.run 사용 전 dispatcher-only local exec-policy 적용
-- Browser: windows-cdp profile status/open/doctor/snapshot/screenshot OK
+- Browser: windows-cdp profile read + click/type/fill/select interact OK
 ```
 
 ---
@@ -375,6 +375,7 @@ local openclaw before reset → raw CDP page commands timeout, rendererCount 0
 local openclaw after reset → raw CDP 일시 OK, 재시작 후 rendererCount 0 / page commands timeout 재발
 linux headless/noSandbox retry → wrapper timeout 유지, config restored
 windows-cdp fallback → OpenClaw browser read probe OK
+windows-cdp interact → local fixture click/type/fill/select OK
 ```
 
 진단 probe:
@@ -383,20 +384,25 @@ windows-cdp fallback → OpenClaw browser read probe OK
 task browser:probe
 python3 scripts/wsl/browser_probe.py
 python3 scripts/wsl/browser_probe.py --profile windows-cdp --url https://example.com --snapshot-limit 200
+python3 scripts/wsl/browser_interact_probe.py --profile windows-cdp
 node scripts/wsl/cdp_probe.mjs --cdp-url http://127.0.0.1:18800
 node scripts/wsl/cdp_probe.mjs --cdp-url http://127.0.0.1:9222 --out .debugloop/artifacts/browser/windows-cdp-probe.json
 ```
 
 probe는 `status`, `tabs`, `open`, `doctor --deep`, `snapshot`, `screenshot`, `console`, `errors`를 순서대로 실행하고, 실패 단계와 Gateway 로그 excerpt를 `.debugloop/runs/latest.jsonl` 및 `.debugloop/artifacts/browser/`에 기록한다.
 CDP probe는 `/json/version`, `/json/list`, `Browser.getVersion`, direct page WebSocket, Browser `Target.attachToTarget`, `Runtime.evaluate`, `Page.captureScreenshot`, `Accessibility.getFullAXTree`를 직접 호출하고 `.debugloop/artifacts/browser/cdp-probe.json`에 결과를 남긴다.
+Interact probe는 repo-local fixture를 `127.0.0.1:<free-port>`에 띄우고 `windows-cdp` profile에서 `click`, `type`, `fill`, `select` 후 fresh snapshot으로 상태 변화를 확인한다.
+같은 `windows-cdp` profile의 browser probes는 병렬 실행하지 않는다. OpenClaw browser refs는 최신 snapshot에 묶이므로 read/interact 검증은 순차 실행한다.
 
 현재 판정:
 
 ```text
 local managed openclaw profile은 renderer/CDP page command가 불안정하며 rendererCount 0 상태가 재발한다.
 manual profile reset 직후 raw CDP는 일시 복구됐지만 OpenClaw wrapper connectOverCDP timeout은 계속된다.
-Windows dedicated Chrome CDP profile windows-cdp는 raw CDP와 OpenClaw wrapper read probe가 모두 통과한다.
+Windows dedicated Chrome CDP profile windows-cdp는 raw CDP, OpenClaw wrapper read probe, interact probe가 모두 통과한다.
 기본 Browser lane은 windows-cdp를 사용하고, 개인 user profile은 사용하지 않는다.
+localhost fixture 접근은 `browser.ssrfPolicy.allowedHostnames`의 `127.0.0.1`, `localhost`로 제한한다.
+`user` profile을 지정한 interact probe는 startup 단계에서 blocked 처리된다.
 ```
 
 진행 순서:
@@ -407,7 +413,7 @@ Windows dedicated Chrome CDP profile windows-cdp는 raw CDP와 OpenClaw wrapper 
 3. raw CDP probe로 browser endpoint와 page command를 분리
 4. profile reset 또는 Chromium/headless/CDP 실행 옵션 점검
 5. windows-cdp fallback으로 browse-read 검증
-6. browse-interact: click/type/fill/select
+6. windows-cdp fixture로 browse-interact 검증
 7. browser-high-impact: upload/download/submit/send/payment은 별도 승인 또는 deny
 ```
 
