@@ -178,6 +178,20 @@ Kiwi v7.2.10 Korean wake detector fix:
   - live Web Microphone still did not reach dry-run shim because faster-whisper small produced unrelated Korean hallucinations instead of the wake phrase
   - background debug_forever dry-run probes explain JSONL line increases during the smoke
   - next blocker is STT model/backend comparison or two-step wake-only flow, not wake detector parsing
+
+Kiwi v7.2.11 STT model comparison:
+  - STT capture/eval probes were added and committed in 6c9fae0
+  - native Windows sounddevice capture remained near-silent, so browser CDP WAV samples were used for the main comparison
+  - browser sample set: .debugloop/artifacts/kiwi/stt-samples-v7.2.11-browser/
+  - selected audio track: 커뮤니케이션 - 마이크(USB Audio Device) (0c76:160a)
+  - sample 3 passed the speech gate with rms=0.016593, peak=0.582132, aboveThresholdCount=1
+  - eval artifact: .debugloop/artifacts/kiwi/stt-eval-v7.2.11.json
+  - faster-whisper small + prompt "오픈클로": wakeHits=3/3, commandHits=0, selected candidate
+  - faster-whisper small without prompt: blocked by unrelated/hallucinated Korean phrases
+  - faster-whisper medium + prompt "오픈클로": wakeHits=2/3 but still hallucinated and did not recover the command
+  - local config already matched selected model/prompt, so no Windows Kiwi config change was needed
+  - direct notify dry-run smoke remains blocked until a two-step wake flow or alternate STT/backend can preserve the command body
+  - no dispatcher/OpenClaw real agent/browser/node action executed
 ```
 
 현재 Node는 `system.run`, `system.run.prepare`, `system.which`, `screen.snapshot`, `camera.list`,
@@ -986,8 +1000,9 @@ OpenClaw approvals / dispatcher / Node policy: unchanged
 다음:
 
 - v7.2.11에서 STT model/backend를 비교한다.
-- 후보: faster-whisper `medium`, wake-only two-step flow, browser audio raw/noise setting 비교, or alternate STT backend.
-- notify/cancel/critical live smoke는 wake phrase or dialog command가 dry-run shim에 도달한 뒤 재시도한다.
+- v7.2.11 결과, `small + "오픈클로"` prompt가 wake phrase는 3/3 인식했지만 command body는 0/3이었다.
+- 다음은 v7.2.12에서 wake-only two-step flow, browser audio raw/noise setting 비교, or alternate STT backend를 검증한다.
+- notify/cancel/critical live smoke는 wake phrase와 command가 dry-run shim에 안정적으로 도달한 뒤 재시도한다.
 
 ### Windows 설치 원칙
 

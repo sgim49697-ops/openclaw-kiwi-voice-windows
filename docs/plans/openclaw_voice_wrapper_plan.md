@@ -1416,6 +1416,22 @@ v7.2.10 결과:
 - 다음 gate: faster-whisper medium 또는 alternate STT/two-step wake-only 비교
 ```
 
+v7.2.11 STT 후보 비교 결과:
+
+```text
+- repo-local STT capture/eval helper는 6c9fae0에서 커밋/푸시 완료
+- native Windows sounddevice capture는 near-silence라 main sample로 쓰지 않음
+- browser CDP capture는 windows-cdp dashboard tab + deviceId=communications를 사용
+- sample artifact: .debugloop/artifacts/kiwi/stt-samples-v7.2.11-browser/
+- eval artifact: .debugloop/artifacts/kiwi/stt-eval-v7.2.11.json
+- small + prompt "오픈클로": wakeHits=3/3, commandHits=0, selected
+- small + no prompt: hallucination으로 blocked
+- medium + prompt "오픈클로": wakeHits=2/3이나 hallucination 섞임, commandHits=0
+- local config.yaml은 이미 model=small, whisper_initial_prompt="오픈클로"라 변경 없음
+- one-shot notify dry-run은 command body 보존이 안 되어 아직 blocked
+- 다음 gate는 two-step wake flow 또는 alternate STT/backend 비교
+```
+
 정책 변경 전:
 
 ```text

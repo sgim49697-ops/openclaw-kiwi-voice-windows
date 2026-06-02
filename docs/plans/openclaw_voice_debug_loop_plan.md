@@ -959,6 +959,34 @@ Safety:
   - STT capture/eval probes write only ignored artifacts and local worker files under .debugloop/artifacts/kiwi/.
   - Browser capture uses an already-open Kiwi dashboard CDP tab and writes WAV/manifest artifacts only.
 
+v7.2.11 STT model comparison result:
+
+```text
+Preflight:
+  - repo clean before probes
+  - Kiwi ready, OPENCLAW_BIN=dry-run-openclaw.cmd, KIWI_WS_ENABLED=false
+  - Gateway approvals remained allowlist + ask=always + deny + autoAllowSkills=off
+  - Windows Node remained connected
+
+Capture:
+  - native Windows sounddevice capture was near-silent and not used as the main STT sample set
+  - browser CDP capture through windows-cdp used deviceId=communications
+  - sample set: .debugloop/artifacts/kiwi/stt-samples-v7.2.11-browser/
+  - sample 3 crossed the speech gate: rms=0.016593, peak=0.582132, aboveThresholdCount=1
+
+Candidate comparison:
+  - artifact: .debugloop/artifacts/kiwi/stt-eval-v7.2.11.json
+  - small + prompt "오픈클로": passed wake recognition, wakeHits=3/3, commandHits=0
+  - small + no prompt: blocked, hallucinated "구독/좋아요" and unrelated phrases
+  - medium + prompt "오픈클로": passed wake recognition 2/3 but still hallucinated and did not recover the command
+
+Decision:
+  - selected candidate remains faster-whisper small + prompt "오픈클로"; local config already matched it, so no Windows Kiwi config change was needed
+  - direct one-shot "오픈클로, 테스트 알림 보내줘" is still not enough for notify dry-run because the command body is not preserved
+  - live notify/cancel/critical smoke was not retried in this batch; it should wait for a two-step wake flow or alternate STT/backend gate
+  - no dispatcher/OpenClaw real agent/browser/node action executed
+```
+
 Rollback:
   - Remove the three STT probe scripts and Taskfile recipes.
   - Revert debug_autoloop marker parsing to Python-only if Node marker discovery is not wanted.
