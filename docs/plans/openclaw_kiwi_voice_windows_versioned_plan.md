@@ -167,6 +167,17 @@ Kiwi v7.2.9 Whisper/STT filter tuning:
   - live transcript did not reach the dry-run shim because Kiwi remained in wake-word-required idle mode
   - no dispatcher/OpenClaw real agent/browser/node action executed
   - next blocker is wake phrase/STT prompt calibration, not WebAudio duration or basic Korean STT
+
+Kiwi v7.2.10 Korean wake detector fix:
+  - local Kiwi checkout was backed up at C:\Users\ksg63\projects\kiwi-voice\backups\openclaw-kiwi-voice-windows\v7.2.10-20260603-005444
+  - WakeWordDetector now preserves configured Unicode wake words instead of falling back to `киви`
+  - Korean wake aliases supported: `오픈클로`, `오픈 클로`, `오픈클로우`, `오픈 클로우`
+  - Korean command text is accepted by Unicode command validation
+  - tests\test_config.py tests\test_smoke.py tests\test_listener_whisper_filter.py tests\test_wake_word_detector.py passed 28 tests
+  - browser mic scan passed with USB mic maxRms 0.018143, aboveThresholdCount 2
+  - live Web Microphone still did not reach dry-run shim because faster-whisper small produced unrelated Korean hallucinations instead of the wake phrase
+  - background debug_forever dry-run probes explain JSONL line increases during the smoke
+  - next blocker is STT model/backend comparison or two-step wake-only flow, not wake detector parsing
 ```
 
 현재 Node는 `system.run`, `system.run.prepare`, `system.which`, `screen.snapshot`, `camera.list`,
@@ -941,6 +952,42 @@ OpenClaw approvals / dispatcher / Node policy: unchanged
 - v7.2.10에서 prompt hallucination을 줄이고 wake phrase 보존을 우선 조정한다.
 - 후보: initial prompt를 wake-only로 축소, wake phrase typo/autocorrect 강화, two-step wake-only then command smoke, 필요 시 `medium` model/backend 비교.
 - notify/cancel/critical live smoke는 wake phrase 또는 dialog-mode command가 dry-run shim에 도달한 뒤 재시도한다.
+
+### v7.2.10 - Korean wake detector fix
+
+상태:
+
+```text
+scope: local Windows Kiwi Korean wake detector compatibility only
+OPENCLAW_BIN: dry-run-openclaw.cmd
+KIWI_WS_ENABLED: false
+OpenClaw approvals / dispatcher / Node policy: unchanged
+```
+
+구현:
+
+- Windows Kiwi checkout을 timestamp backup 후 수정했다.
+- `WakeWordDetector`는 configured Unicode wake word를 그대로 보존한다.
+- Korean wake aliases `오픈클로`, `오픈 클로`, `오픈클로우`, `오픈 클로우`를 지원한다.
+- command extraction은 Unicode `\w`를 사용해 한글 명령을 유효 command로 인정한다.
+- local `config.yaml`의 `whisper_initial_prompt`를 `"오픈클로"`로 축소했다.
+- `tests/test_wake_word_detector.py`에 Korean wake unit test를 추가했다.
+
+검증:
+
+- `py_compile` 통과: `kiwi\listener.py`, `kiwi\config_loader.py`, `kiwi\service.py`
+- `tests\test_config.py`, `tests\test_smoke.py`, `tests\test_listener_whisper_filter.py`, `tests\test_wake_word_detector.py`: 28 passed
+- browser mic scan: USB mic `maxRms=0.018143`, `aboveThresholdCount=2`
+- dashboard Web Microphone: `Speech segment` 1.7s-2.8s, detected language `ko`
+- live STT: unrelated/hallucinated Korean text, no wake phrase
+- live command did not reach dry-run shim; JSONL increases came from background `debug_forever` dry-run probes.
+- 종료 후 `web_audio_clients=0`으로 복귀했다.
+
+다음:
+
+- v7.2.11에서 STT model/backend를 비교한다.
+- 후보: faster-whisper `medium`, wake-only two-step flow, browser audio raw/noise setting 비교, or alternate STT backend.
+- notify/cancel/critical live smoke는 wake phrase or dialog command가 dry-run shim에 도달한 뒤 재시도한다.
 
 ### Windows 설치 원칙
 

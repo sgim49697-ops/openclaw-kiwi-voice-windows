@@ -898,6 +898,44 @@ Decision:
   - next blocker is wake phrase/STT prompt calibration: reduce prompt hallucination, preserve "오픈클로", and retry notify/cancel/critical only after the wake phrase or dialog-mode command reaches the dry-run shim.
 ```
 
+v7.2.10 result:
+
+```text
+Scope:
+  - Windows Kiwi local checkout Korean wake detector compatibility only
+  - OpenClaw approvals, dispatcher, Node policy, Gateway v4, Telegram, owner voice were not changed
+
+Local Kiwi patch:
+  - backup: C:\Users\ksg63\projects\kiwi-voice\backups\openclaw-kiwi-voice-windows\v7.2.10-20260603-005444
+  - listener.py WakeWordDetector now preserves configured Unicode wake words such as "오픈클로"
+  - Korean aliases supported: "오픈클로", "오픈 클로", "오픈클로우", "오픈 클로우"
+  - _extract_command now uses Unicode \w so Korean command text is not treated as punctuation-only
+  - local config.yaml reduced whisper_initial_prompt to "오픈클로"
+  - tests\test_wake_word_detector.py covers Korean wake preservation, alias extraction, no-wake negative, and Korean command extraction
+
+Validation:
+  - Windows Kiwi py_compile passed for listener.py, config_loader.py, service.py
+  - tests\test_config.py tests\test_smoke.py tests\test_listener_whisper_filter.py tests\test_wake_word_detector.py: 28 passed
+  - prompt retry tests\test_wake_word_detector.py tests\test_listener_whisper_filter.py: 9 passed
+  - Kiwi restarted through kiwi_runtime_capture; OPENCLAW_BIN remained dry-run-openclaw.cmd
+  - browser mic scan passed with USB mic maxRms 0.018143 and aboveThresholdCount 2
+
+Runtime:
+  - Web Microphone connected and later disconnected cleanly
+  - WebAudio produced 1.7s-2.8s speech segments
+  - Whisper detected language ko with probability 1.00
+  - after prompt reduction, live STT still produced unrelated/hallucinated Korean text such as "안녕하세요 여러분 오늘은" and "잘 먹었습니다."
+  - no WAKE or OpenClaw send event appeared in Kiwi runtime logs
+  - .debugloop/runs/kiwi-live-dry-run.jsonl increases during the test were caused by background debug_forever dry-run probes, not live microphone commands
+  - no dispatcher/OpenClaw real agent/browser/node action executed
+  - web_audio_clients returned to 0
+
+Decision:
+  - v7.2.10 fixed the Korean wake detector code path and unit tests.
+  - live microphone is still blocked before wake detection because faster-whisper small does not reliably recognize the spoken wake phrase/command.
+  - next blocker is STT model/backend comparison or a two-step wake-only flow, not the wake detector parser.
+```
+
 ---
 
 ## 15. Loop 8 — E2E

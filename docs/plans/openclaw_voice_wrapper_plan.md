@@ -1191,6 +1191,7 @@ task check 통과 또는 task CLI 미설치 시 개별 validator 통과
 - [~] v7.2.7 Known-good mic recovery: browser mic gate 통과, transcript 미도달
 - [x] v7.2.8 WebAudioBridge segment buffering fix: 1초 이상 segment 생성 확인
 - [~] v7.2.9 Whisper/STT filter tuning: Korean transcript 생성, wake phrase 미보존으로 dry-run shim 미도달
+- [~] v7.2.10 Korean wake detector fix: parser 수정 완료, live STT가 wake phrase 미인식
 - [ ] owner voice 등록
 - [ ] Telegram approval 연결
 - [ ] Gateway v4 WebSocket 호환 또는 CLI fallback 유지 결정
@@ -1393,6 +1394,26 @@ v7.2.9 결과:
 - 실제 dispatcher/OpenClaw agent/browser/node 실행 없음
 - web_audio_clients=0 복귀
 - 다음 gate: wake phrase/STT prompt calibration 후 live notify/cancel/critical dry-run 재시도
+```
+
+v7.2.10 결과:
+
+```text
+- Windows Kiwi local checkout backup:
+  C:\Users\ksg63\projects\kiwi-voice\backups\openclaw-kiwi-voice-windows\v7.2.10-20260603-005444
+- local listener.py WakeWordDetector가 configured Unicode wake word를 보존하도록 수정
+- Korean aliases: "오픈클로", "오픈 클로", "오픈클로우", "오픈 클로우"
+- Korean command text는 Unicode \w validation으로 통과
+- local config.yaml whisper_initial_prompt="오픈클로"
+- tests\test_config.py tests\test_smoke.py tests\test_listener_whisper_filter.py tests\test_wake_word_detector.py: 28 passed
+- browser mic scan: USB mic maxRms=0.018143, aboveThresholdCount=2
+- Web Microphone live segments: 1.7s-2.8s
+- live STT는 unrelated/hallucinated Korean text를 생성했고 wake phrase는 나오지 않음
+- Kiwi runtime log에 WAKE/OpenClaw send event 없음
+- dry-run JSONL 증가는 background debug_forever probe 때문이며 live mic command는 dry-run shim에 미도달
+- 실제 dispatcher/OpenClaw agent/browser/node 실행 없음
+- web_audio_clients=0 복귀
+- 다음 gate: faster-whisper medium 또는 alternate STT/two-step wake-only 비교
 ```
 
 정책 변경 전:
