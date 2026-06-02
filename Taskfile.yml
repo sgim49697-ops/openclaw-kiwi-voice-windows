@@ -130,6 +130,21 @@ tasks:
     cmds:
       - python3 scripts/wsl/kiwi_windows_audio_probe.py --scan-all --per-device-ms {{.PER_DEVICE_MS | default 3000}} --min-rms {{.MIN_RMS | default 0.015}} || python scripts/wsl/kiwi_windows_audio_probe.py --scan-all --per-device-ms {{.PER_DEVICE_MS | default 3000}} --min-rms {{.MIN_RMS | default 0.015}}
 
+  kiwi:stt-capture:
+    desc: Capture ignored Windows microphone WAV samples for local STT comparison.
+    cmds:
+      - python3 scripts/wsl/kiwi_stt_capture_probe.py --count {{.COUNT | default 3}} --duration-ms {{.DURATION_MS | default 6000}} || python scripts/wsl/kiwi_stt_capture_probe.py --count {{.COUNT | default 3}} --duration-ms {{.DURATION_MS | default 6000}}
+
+  kiwi:browser-stt-capture:
+    desc: Capture ignored dashboard browser microphone WAV samples through CDP.
+    cmds:
+      - node scripts/wsl/kiwi_browser_stt_capture_probe.mjs --count {{.COUNT | default 3}} --duration-ms {{.DURATION_MS | default 6000}}
+
+  kiwi:stt-eval:
+    desc: Compare local faster-whisper candidates on captured Kiwi WAV samples.
+    cmds:
+      - python3 scripts/wsl/kiwi_stt_eval_probe.py || python scripts/wsl/kiwi_stt_eval_probe.py
+
   debug:once:
     desc: Run one read-only debug monitor pass.
     cmds:

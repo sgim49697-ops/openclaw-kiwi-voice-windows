@@ -205,22 +205,33 @@ def is_repo_python_path(path_text: str) -> bool:
     return path.suffix == ".py" and (rel.startswith("scripts/wsl/") or rel.startswith("tests/"))
 
 
+def is_repo_node_path(path_text: str) -> bool:
+    path = (ROOT / path_text).resolve()
+    try:
+        rel = path.relative_to(ROOT).as_posix()
+    except ValueError:
+        return False
+    return path.suffix == ".mjs" and rel.startswith("scripts/wsl/")
+
+
 def is_safe_marker_command(command: Sequence[str]) -> bool:
     if not command:
         return False
     executable = command[0]
-    if executable not in {"python", "python3"}:
-        return False
-    if len(command) >= 3 and command[1:3] == ["-m", "py_compile"]:
-        return all(is_repo_python_path(item) for item in command[3:])
-    if len(command) >= 2 and command[1] in {"-c", "-m"}:
-        return False
     flags = [item.split("=", 1)[0] for item in command[2:] if item.startswith("--")]
     if any(flag in FORBIDDEN_MARKER_FLAGS for flag in flags):
         return False
     if any(flag not in ALLOWED_MARKER_FLAGS for flag in flags):
         return False
-    return len(command) >= 2 and is_repo_python_path(command[1])
+    if executable in {"python", "python3"}:
+        if len(command) >= 3 and command[1:3] == ["-m", "py_compile"]:
+            return all(is_repo_python_path(item) for item in command[3:])
+        if len(command) >= 2 and command[1] in {"-c", "-m"}:
+            return False
+        return len(command) >= 2 and is_repo_python_path(command[1])
+    if executable == "node":
+        return len(command) >= 2 and is_repo_node_path(command[1])
+    return False
 
 
 def parse_autoloop_markers(path: Path) -> tuple[list[CommandSpec], list[dict]]:
@@ -236,7 +247,7 @@ def parse_autoloop_markers(path: Path) -> tuple[list[CommandSpec], list[dict]]:
 
     for line_number, line in enumerate(lines[:30], start=1):
         stripped = line.strip()
-        if not stripped.startswith("#") or MARKER_PREFIX not in stripped:
+        if not (stripped.startswith("#") or stripped.startswith("//")) or MARKER_PREFIX not in stripped:
             continue
         marker = stripped.split(MARKER_PREFIX, 1)[1].strip()
         if not marker.startswith("command="):
@@ -260,7 +271,7 @@ def discover_marker_commands(files: Sequence[Path]) -> tuple[list[CommandSpec], 
     specs: list[CommandSpec] = []
     ignored: list[dict] = []
     for path in files:
-        if path.suffix != ".py":
+        if path.suffix not in {".py", ".mjs"}:
             continue
         file_specs, file_ignored = parse_autoloop_markers(path)
         specs.extend(file_specs)

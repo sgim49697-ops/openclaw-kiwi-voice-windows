@@ -936,6 +936,35 @@ Decision:
   - next blocker is STT model/backend comparison or a two-step wake-only flow, not the wake detector parser.
 ```
 
+v7.2.11 STT probe loop integration:
+
+```text
+Scope:
+  - Add repo-local probes for STT sample capture and faster-whisper candidate comparison.
+  - Capture artifacts stay under ignored .debugloop/artifacts/kiwi/.
+  - The default forever loop only runs lightweight --status markers; it does not record microphone audio or run model transcription unless the explicit Taskfile recipe/probe is invoked.
+
+Taskfile recipes:
+  - kiwi:stt-capture captures Windows native microphone WAV samples through the Kiwi venv.
+  - kiwi:browser-stt-capture captures dashboard browser microphone WAV samples through windows-cdp.
+  - kiwi:stt-eval compares captured WAV samples against configured faster-whisper candidates.
+
+Automatic loop:
+  - debug_autoloop now accepts safe marker commands in Python # comments and Node // comments.
+  - Marker commands are limited to repo-local Python/Node scripts with allowlisted read-only flags such as --status.
+  - kiwi_stt_capture_probe.py, kiwi_stt_eval_probe.py, and kiwi_browser_stt_capture_probe.mjs expose --status markers, so new STT artifacts are surfaced during regular debug_forever cycles without heavy capture/eval side effects.
+
+Safety:
+  - No OpenClaw approval, dispatcher, Node policy, Gateway v4, Telegram, browser action, or real agent execution is changed.
+  - STT capture/eval probes write only ignored artifacts and local worker files under .debugloop/artifacts/kiwi/.
+  - Browser capture uses an already-open Kiwi dashboard CDP tab and writes WAV/manifest artifacts only.
+
+Rollback:
+  - Remove the three STT probe scripts and Taskfile recipes.
+  - Revert debug_autoloop marker parsing to Python-only if Node marker discovery is not wanted.
+  - Delete ignored .debugloop/artifacts/kiwi/stt-* files if local WAV artifacts should be cleared.
+```
+
 ---
 
 ## 15. Loop 8 — E2E
