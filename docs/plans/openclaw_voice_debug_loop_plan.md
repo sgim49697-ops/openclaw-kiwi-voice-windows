@@ -115,6 +115,9 @@ browser page-level CDP가 timeout이면 `browser_cdp_recovery.py`가 isolated `o
 
 `debug:forever`는 `debug_agent.py --once`를 cycle 단위로 호출하는 supervisor다. 작업트리가 dirty이면 자동으로 `--dry-run`을 붙여 repo-local 수정/커밋을 막고, clean이면 기존 L2 repair/commit 정책을 따른다. `.debugloop/STOP`이 있거나 Ctrl+C가 들어오면 현재 cycle 종료 후 멈춘다. 중복 실행은 `.debugloop/runs/forever.lock`으로 거부하고, 상태는 `.debugloop/runs/forever.jsonl`과 `.debugloop/runs/latest-forever-summary.md`에 기록한다. CDP recovery는 `debug_agent.py --cycle-index <forever-cycle>`로 outer cycle 번호를 받아 `--once` 재호출마다 cycle 1로 오인하지 않는다.
 
+Browser lane 기본 profile은 최신 운영 기본값과 동일하게 `windows-cdp`다. local managed `openclaw` profile의 page-level CDP recovery는 별도 진단으로만 유지하고, `windows-cdp` read/interact probe가 통과하면 isolated `openclaw` recovery를 자동 실행하지 않는다.
+`windows-cdp` interact smoke는 fixture open 결과의 `tab: tN` label을 focus한 뒤 snapshot/refs를 추출한다. 이는 기존 Kiwi dashboard tab이 활성 탭으로 남아 fixture refs가 누락되는 false negative를 막기 위한 것이다.
+
 ---
 
 ## 5. 권장 디렉터리 구조
@@ -814,6 +817,44 @@ Decision:
   - Windows/browser microphone signal gate is now partially recovered.
   - live transcript did not reach the dry-run shim.
   - next blocker is WebAudioBridge segmentation / minimum segment duration / buffering, not raw mic signal.
+```
+
+v7.2.8 result:
+
+```text
+Scope:
+  - Windows Kiwi local checkout WebAudioBridge buffering only
+  - OpenClaw approvals, dispatcher, Node policy, Gateway v4, Telegram, owner voice were not changed
+
+Local Kiwi patch:
+  - backup: C:\Users\ksg63\projects\kiwi-voice\backups\openclaw-kiwi-voice-windows\v7.2.8-20260602-234624
+  - patched kiwi\api\audio_bridge.py to end speech by duration, not chunk count
+  - added config fields in kiwi\config_loader.py:
+    web_audio_silence_threshold, web_audio_end_silence_seconds,
+    web_audio_min_submit_seconds, web_audio_max_speech_seconds
+  - local config.yaml web_audio override:
+    min_submit_seconds: 1.0
+    end_silence_seconds: 0.8
+  - tests\test_audio_bridge.py now covers short segment buffering before submit
+
+Validation:
+  - Windows Kiwi py_compile passed for audio_bridge.py and config_loader.py
+  - pytest was added to the local Kiwi venv with uv pip for validation
+  - tests\test_audio_bridge.py: 10 passed
+  - Kiwi restarted through kiwi_runtime_capture; OPENCLAW_BIN remained dry-run-openclaw.cmd
+  - browser mic scan passed with default USB mic maxRms 0.037766 and aboveThresholdCount 7
+
+Runtime:
+  - synthetic /api/audio sequence produced Speech segment 2.0s and External audio submitted 2.0s
+  - dashboard Web Microphone client produced Speech segment 1.7s and External audio submitted 1.7s
+  - main segments are no longer skipped as Audio too short
+  - dry-run JSONL stayed at 130 lines; no dispatcher/OpenClaw agent/browser/node execution occurred
+  - Web Microphone disconnected cleanly and web_audio_clients returned to 0
+
+Decision:
+  - v7.2.8 segment buffering fix is complete.
+  - transcript still did not reach the dry-run shim because Whisper output was filtered as hallucination.
+  - next blocker is Whisper/STT tuning or prompt/threshold calibration, not WebAudioBridge minimum duration.
 ```
 
 ---

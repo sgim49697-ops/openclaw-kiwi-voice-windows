@@ -9,6 +9,8 @@ import shutil
 import subprocess
 import sys
 import time
+import urllib.error
+import urllib.request
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -19,6 +21,7 @@ ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_LOG_PATH = ROOT / ".debugloop" / "runs" / "latest.jsonl"
 ARTIFACT_DIR = ROOT / ".debugloop" / "artifacts" / "browser"
 DEFAULT_URL = "https://example.com"
+DEFAULT_PROFILE = "windows-cdp"
 
 
 @dataclass
@@ -74,6 +77,63 @@ def run_command(name: str, command: Sequence[str], timeout: int = 45) -> Command
 
 def browser_command(profile: str, *args: str) -> list[str]:
     return ["openclaw", "browser", "--browser-profile", profile, *args]
+
+
+def cdp_ready(url: str = "http://127.0.0.1:9222/json/version", timeout: float = 2.0) -> bool:
+    try:
+        with urllib.request.urlopen(url, timeout=timeout) as response:
+            return response.status == 200
+    except (OSError, urllib.error.URLError):
+        return False
+
+
+def ensure_windows_cdp(args: argparse.Namespace) -> CommandResult | None:
+    if args.profile != "windows-cdp" or args.no_ensure_cdp or cdp_ready():
+        return None
+
+    powershell = shutil.which("powershell.exe")
+    if not powershell:
+        return CommandResult(
+            "ensure_windows_cdp",
+            ["powershell.exe"],
+            127,
+            "windows-cdp is not running and powershell.exe is unavailable",
+            0,
+        )
+
+    command = [
+        powershell,
+        "-NoProfile",
+        "-Command",
+        (
+            "$chrome = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'; "
+            "$profile = Join-Path $env:LOCALAPPDATA 'OpenClawBrowserCdp\\windows-cdp-profile'; "
+            "if (-not (Test-Path $chrome)) { throw 'Chrome executable not found' }; "
+            "New-Item -ItemType Directory -Force -Path $profile | Out-Null; "
+            "Start-Process -FilePath $chrome -ArgumentList @("
+            "'--remote-debugging-port=9222', "
+            "'--remote-debugging-address=127.0.0.1', "
+            "\"--user-data-dir=$profile\", "
+            "'--no-first-run', "
+            "'--no-default-browser-check', "
+            "'--disable-sync', "
+            "'--disable-background-networking', "
+            "'--disable-features=Translate,MediaRouter', "
+            "'about:blank'"
+            "); "
+            "Write-Output $profile"
+        ),
+    ]
+    result = run_command("ensure_windows_cdp", command, timeout=20)
+    if result.returncode != 0:
+        return result
+
+    deadline = time.monotonic() + 10
+    while time.monotonic() < deadline:
+        if cdp_ready():
+            return result
+        time.sleep(0.25)
+    return CommandResult(result.name, result.command, 1, "windows-cdp did not become ready on http://127.0.0.1:9222", result.duration_ms)
 
 
 def command_record(result: CommandResult, required: bool = True) -> dict:
@@ -141,6 +201,21 @@ def build_probe(args: argparse.Namespace) -> dict:
     checks: list[dict] = []
     screenshot_artifact: str | None = None
 
+    ensure_result = ensure_windows_cdp(args)
+    if ensure_result is not None:
+        checks.append(command_record(ensure_result, required=True))
+        if ensure_result.returncode != 0:
+            return {
+                "timestamp": now_iso(),
+                "mode": "browser_probe",
+                "profile": args.profile,
+                "url": args.url,
+                "status": "blocked",
+                "failedAt": "ensure_windows_cdp",
+                "checks": checks,
+                "artifacts": {},
+            }
+
     steps: list[tuple[str, list[str], bool, int]] = [
         ("status", browser_command(args.profile, "status"), True, 30),
         ("tabs", browser_command(args.profile, "tabs"), True, 30),
@@ -207,10 +282,11 @@ def print_probe(record: dict) -> None:
 
 def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run a read-only browser lane diagnostic probe.")
-    parser.add_argument("--profile", default="openclaw", help="Browser profile to probe.")
+    parser.add_argument("--profile", default=DEFAULT_PROFILE, help="Browser profile to probe.")
     parser.add_argument("--url", default=DEFAULT_URL, help="Safe read-only URL to open.")
     parser.add_argument("--snapshot-limit", type=int, default=200, help="Snapshot output limit.")
     parser.add_argument("--no-open", action="store_true", help="Skip opening the URL before probing live commands.")
+    parser.add_argument("--no-ensure-cdp", action="store_true", help="Do not auto-start the dedicated Windows CDP Chrome.")
     parser.add_argument("--skip-doctor", action="store_true", help="Skip the deep browser doctor step.")
     parser.add_argument("--skip-snapshot", action="store_true", help="Skip the OpenClaw browser snapshot step.")
     parser.add_argument("--skip-screenshot", action="store_true", help="Skip the OpenClaw browser screenshot step.")

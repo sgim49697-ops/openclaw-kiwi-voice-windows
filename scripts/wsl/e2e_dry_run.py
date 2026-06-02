@@ -13,7 +13,7 @@ from typing import Sequence
 ROOT = Path(__file__).resolve().parents[2]
 PENDING_DIR = ROOT / ".debugloop" / "queue" / "pending"
 DEFAULT_PROJECT_PATH = r"\\wsl.localhost\Ubuntu-22.04\home\user\projects\openclaw-kiwi-voice-windows"
-DEFAULT_BROWSER_PROFILE = "openclaw"
+DEFAULT_BROWSER_PROFILE = "windows-cdp"
 DEFAULT_BROWSER_URL = "https://example.com"
 WAKE_PHRASES = ("오픈클로", "오픈 클로", "openclaw", "open claw")
 DISPATCHER_ACTIONS = {
@@ -183,7 +183,7 @@ def classify_intent(intent: str, project_path: str) -> dict:
             "riskTier": "medium" if browser_action == "browser_interact" else "low",
             "approvalRequired": True,
             "mustDeny": False,
-            "reason": "Create a browser-lane approval request for the isolated OpenClaw profile.",
+            "reason": "Create a browser-lane approval request for the dedicated Windows CDP profile.",
             "action": browser_action,
             "params": {
                 "utterance": normalized,

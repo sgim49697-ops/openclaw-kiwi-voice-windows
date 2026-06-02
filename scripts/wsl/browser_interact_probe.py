@@ -26,7 +26,7 @@ ROOT = Path(__file__).resolve().parents[2]
 FIXTURE_PATH = ROOT / "tests" / "browser" / "fixtures" / "interact-smoke.html"
 DEFAULT_LOG_PATH = ROOT / ".debugloop" / "runs" / "latest.jsonl"
 ARTIFACT_DIR = ROOT / ".debugloop" / "artifacts" / "browser"
-DEFAULT_PROFILE = "openclaw"
+DEFAULT_PROFILE = "windows-cdp"
 
 HIGH_IMPACT_COMMANDS = {"submit", "send", "upload", "download", "payment", "purchase", "delete"}
 
@@ -173,6 +173,11 @@ def extract_ref(snapshot: str, label: str) -> str | None:
     return None
 
 
+def extract_tab_label(output: str) -> str | None:
+    match = re.search(r"\btab:\s*(t\d+)\b", output)
+    return match.group(1) if match else None
+
+
 def ensure_expected(snapshot: CommandResult, expected_text: str) -> CommandResult:
     if snapshot.returncode != 0:
         return snapshot
@@ -290,6 +295,13 @@ def build_probe(args: argparse.Namespace) -> dict:
         for name, command, required, timeout in preflight_steps:
             result = run_safe(name, command, timeout=timeout)
             checks.append(command_record(result, required=required))
+            if name == "open" and result.returncode == 0:
+                tab_label = extract_tab_label(result.output)
+                if tab_label:
+                    focus = run_safe("focus_fixture", browser_command(args.profile, "focus", tab_label), timeout=30)
+                    checks.append(command_record(focus, required=True))
+                    if focus.returncode != 0:
+                        return blocked_record(args, checks, "focus_fixture", focus.output, fixture_url=fixture_url)
             if name == "initial_snapshot":
                 initial_snapshot = result
             if required and result.returncode != 0:

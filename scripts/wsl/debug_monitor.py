@@ -15,6 +15,7 @@ from typing import Sequence
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_LOG_PATH = ROOT / ".debugloop" / "runs" / "latest.jsonl"
+DEFAULT_BROWSER_PROFILE = "windows-cdp"
 
 
 @dataclass
@@ -127,8 +128,16 @@ def check_nodes() -> dict:
 
 
 def check_browser() -> dict:
-    status_result = run_command("browser_status", ["openclaw", "browser", "--browser-profile", "openclaw", "status"], timeout=20)
-    doctor_result = run_command("browser_doctor", ["openclaw", "browser", "--browser-profile", "openclaw", "doctor", "--deep"], timeout=35)
+    status_result = run_command(
+        "browser_status",
+        ["openclaw", "browser", "--browser-profile", DEFAULT_BROWSER_PROFILE, "status"],
+        timeout=20,
+    )
+    doctor_result = run_command(
+        "browser_doctor",
+        ["openclaw", "browser", "--browser-profile", DEFAULT_BROWSER_PROFILE, "doctor", "--deep"],
+        timeout=35,
+    )
     output = f"{status_result.output}\n{doctor_result.output}".strip()
     unknown_method = "unknown method: browser.request" in output
     ok = status_result.returncode == 0 and doctor_result.returncode == 0 and not unknown_method

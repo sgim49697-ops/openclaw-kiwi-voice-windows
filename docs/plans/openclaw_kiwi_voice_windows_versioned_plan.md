@@ -145,6 +145,17 @@ Kiwi v7.2.7 known-good mic recovery:
   - Web Microphone connected and returned to web_audio_clients=0 after smoke
   - dry-run shim log did not increase; Kiwi split live speech into mostly 0.2s-0.3s segments that Whisper skipped as too short
   - next blocker is WebAudioBridge segment buffering/minimum duration, not basic mic signal
+
+Kiwi v7.2.8 WebAudioBridge buffering fix:
+  - local Kiwi checkout was backed up at C:\Users\ksg63\projects\kiwi-voice\backups\openclaw-kiwi-voice-windows\v7.2.8-20260602-234624
+  - patched local audio_bridge.py to use duration-based submit criteria
+  - config_loader.py now reads web_audio min/end/threshold/max duration tuning fields
+  - local config.yaml sets min_submit_seconds 1.0 and end_silence_seconds 0.8
+  - tests\test_audio_bridge.py passed 10 tests after uv pip pytest install in the local venv
+  - browser mic scan passed again with default USB mic maxRms 0.037766, aboveThresholdCount 7
+  - synthetic WebAudio produced a 2.0s segment; dashboard Web Microphone produced a 1.7s segment
+  - dry-run JSONL did not increase and no real OpenClaw/dispatcher action executed
+  - next blocker is Whisper hallucination/STT tuning, not WebAudio segment length
 ```
 
 현재 Node는 `system.run`, `system.run.prepare`, `system.which`, `screen.snapshot`, `camera.list`,
@@ -849,6 +860,40 @@ live dispatcher/browser/node execution: not attempted
 
 - v7.2.8에서 WebAudioBridge의 segment buffering/minimum duration을 보정한다.
 - live notify/cancel/critical smoke는 transcript가 dry-run shim에 도달한 뒤 재시도한다.
+
+### v7.2.8 - WebAudioBridge segment buffering fix
+
+상태:
+
+```text
+scope: local Windows Kiwi WebAudioBridge buffering only
+OPENCLAW_BIN: dry-run-openclaw.cmd
+KIWI_WS_ENABLED: false
+OpenClaw approvals / dispatcher / Node policy: unchanged
+```
+
+구현:
+
+- Windows Kiwi checkout을 timestamp backup 후 수정했다.
+- `audio_bridge.py`는 speech end를 chunk count가 아니라 duration으로 판단한다.
+- `config_loader.py`는 `web_audio` tuning 값을 읽는다.
+- local `config.yaml`에는 `min_submit_seconds: 1.0`, `end_silence_seconds: 0.8`만 추가했다.
+- `tests/test_audio_bridge.py`에 최소 duration 전 short segment buffering 검증을 추가했다.
+
+검증:
+
+- `py_compile` 통과: `kiwi\api\audio_bridge.py`, `kiwi\config_loader.py`
+- `tests\test_audio_bridge.py`: 10 passed
+- browser mic scan: default USB mic `maxRms=0.037766`, `aboveThresholdCount=7`
+- synthetic WebAudio: `Speech segment: 2.0s`, `External audio submitted: 2.0s`
+- dashboard Web Microphone: `Speech segment: 1.7s`, `External audio submitted: 1.7s`
+- `.debugloop/runs/kiwi-live-dry-run.jsonl`은 130줄 그대로 유지되어 실제 실행 요청은 없었다.
+- 종료 후 `web_audio_clients=0`으로 복귀했다.
+
+다음:
+
+- v7.2.9에서 Whisper hallucination filter, timestamp hallucination, Korean prompt/threshold를 조정한다.
+- notify/cancel/critical live smoke는 transcript가 dry-run shim에 도달한 뒤 재시도한다.
 
 ### Windows 설치 원칙
 

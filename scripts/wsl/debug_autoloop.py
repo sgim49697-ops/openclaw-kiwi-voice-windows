@@ -420,8 +420,13 @@ def should_run_cdp_recovery(args: argparse.Namespace, results: Sequence[CommandR
         return False
     if not (ROOT / "scripts/wsl/browser_cdp_recovery.py").exists():
         return False
+    probe = next((result for result in results if result.spec.name in {"browser:probe", "browser:probe:on_blocked"}), None)
+    if probe is not None and probe.status == "ok":
+        return False
     monitor = next((result for result in results if result.spec.name == "debug:monitor"), None)
     if monitor is None:
+        return False
+    if "profile: openclaw" not in monitor.output:
         return False
     return "- browser: blocked" in monitor.output or "browser live check unavailable" in monitor.output
 

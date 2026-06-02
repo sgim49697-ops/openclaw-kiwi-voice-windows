@@ -1189,6 +1189,7 @@ task check 통과 또는 task CLI 미설치 시 개별 validator 통과
 - [~] v7.2.5 Windows mic signal recovery gate: 재측정 후에도 RMS 미달
 - [~] v7.2.6 Windows audio device audit: 전체 input scan에서도 RMS 미달
 - [~] v7.2.7 Known-good mic recovery: browser mic gate 통과, transcript 미도달
+- [x] v7.2.8 WebAudioBridge segment buffering fix: 1초 이상 segment 생성 확인
 - [ ] owner voice 등록
 - [ ] Telegram approval 연결
 - [ ] Gateway v4 WebSocket 호환 또는 CLI fallback 유지 결정
@@ -1353,6 +1354,24 @@ v7.2.7 결과:
 - dry-run JSONL은 증가하지 않음
 - Kiwi WebAudio speech segment가 대부분 0.2s-0.3s라 Whisper가 Audio too short로 skip
 - 다음 gate: WebAudioBridge segment buffering/minimum duration 보정 후 live smoke 재시도
+```
+
+v7.2.8 결과:
+
+```text
+- Windows Kiwi local checkout backup:
+  C:\Users\ksg63\projects\kiwi-voice\backups\openclaw-kiwi-voice-windows\v7.2.8-20260602-234624
+- local audio_bridge.py를 duration 기준 submit으로 보정
+- local config_loader.py에 web_audio tuning fields 추가
+- local config.yaml에 min_submit_seconds=1.0, end_silence_seconds=0.8 추가
+- tests\test_audio_bridge.py: 10 passed
+- browser mic scan: default USB mic maxRms=0.037766, aboveThresholdCount=7
+- synthetic /api/audio: Speech segment 2.0s, External audio submitted 2.0s
+- dashboard Web Microphone: Speech segment 1.7s, External audio submitted 1.7s
+- Audio too short blocker는 해소
+- dry-run JSONL은 130줄 그대로, 실제 dispatcher/OpenClaw 실행 없음
+- web_audio_clients=0 복귀
+- 다음 gate: Whisper hallucination/STT threshold/prompt 튜닝 후 transcript dry-run 재시도
 ```
 
 정책 변경 전:
