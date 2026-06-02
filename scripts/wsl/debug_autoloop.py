@@ -228,10 +228,10 @@ def parse_autoloop_markers(path: Path) -> tuple[list[CommandSpec], list[dict]]:
         return specs, ignored
 
     for line_number, line in enumerate(lines[:30], start=1):
-        marker_index = line.find(MARKER_PREFIX)
-        if marker_index < 0:
+        stripped = line.strip()
+        if not stripped.startswith("#") or MARKER_PREFIX not in stripped:
             continue
-        marker = line[marker_index + len(MARKER_PREFIX) :].strip()
+        marker = stripped.split(MARKER_PREFIX, 1)[1].strip()
         if not marker.startswith("command="):
             ignored.append({"path": relative(path), "line": line_number, "reason": "missing command="})
             continue

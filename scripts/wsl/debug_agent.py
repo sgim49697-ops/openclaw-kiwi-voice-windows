@@ -149,10 +149,10 @@ def parse_repair_markers(path: Path) -> tuple[list[RepairSpec], list[dict]]:
         return specs, ignored
 
     for line_number, line in enumerate(lines[:30], start=1):
-        marker_index = line.find(REPAIR_PREFIX)
-        if marker_index < 0:
+        stripped = line.strip()
+        if not stripped.startswith("#") or REPAIR_PREFIX not in stripped:
             continue
-        marker = line[marker_index + len(REPAIR_PREFIX) :].strip()
+        marker = stripped.split(REPAIR_PREFIX, 1)[1].strip()
         if not marker.startswith("repair="):
             ignored.append({"path": relative(path), "line": line_number, "reason": "missing repair="})
             continue
