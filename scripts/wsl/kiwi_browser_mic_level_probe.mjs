@@ -17,10 +17,13 @@ Options:
   --cdp-url <url>        Chrome CDP HTTP endpoint (default: ${DEFAULT_CDP_URL})
   --dashboard-url <url>  Kiwi dashboard URL prefix (default: ${DEFAULT_DASHBOARD_URL})
   --duration-ms <ms>     Recording duration; speak during this window (default: 6000)
+  --per-device-ms <ms>   Recording duration for each input during --scan-inputs (default: 3000)
   --interval-ms <ms>     Sampling interval (default: 100)
   --timeout-ms <ms>      CDP command timeout (default: 12000)
   --raw-audio            Request mic without echo cancellation/noise suppression/auto gain
   --device-id <id>       Optional getUserMedia deviceId, e.g. default or communications
+  --scan-inputs          Measure every browser audioinput and rank by RMS
+  --min-rms <value>      Minimum RMS gate for scan/pass verdict (default: ${KIWI_SPEECH_GATE})
   --out <path>           JSON artifact path (default: .debugloop/artifacts/kiwi/browser-mic-level.json)
   --jsonl <path>         JSONL run log path (default: .debugloop/runs/latest.jsonl)
   -h, --help             Show this help
@@ -32,10 +35,13 @@ function parseArgs(argv) {
     cdpUrl: DEFAULT_CDP_URL,
     dashboardUrl: DEFAULT_DASHBOARD_URL,
     durationMs: 6000,
+    perDeviceMs: 3000,
     intervalMs: 100,
     timeoutMs: 12000,
     rawAudio: false,
     deviceId: null,
+    scanInputs: false,
+    minRms: KIWI_SPEECH_GATE,
     out: resolve(ARTIFACT_DIR, "browser-mic-level.json"),
     jsonl: resolve(RUNS_DIR, "latest.jsonl"),
   };
@@ -58,6 +64,10 @@ function parseArgs(argv) {
       args.durationMs = positiveInteger(requiredValue(argv, ++index, arg), arg);
       continue;
     }
+    if (arg === "--per-device-ms") {
+      args.perDeviceMs = positiveInteger(requiredValue(argv, ++index, arg), arg);
+      continue;
+    }
     if (arg === "--interval-ms") {
       args.intervalMs = positiveInteger(requiredValue(argv, ++index, arg), arg);
       continue;
@@ -72,6 +82,14 @@ function parseArgs(argv) {
     }
     if (arg === "--device-id") {
       args.deviceId = requiredValue(argv, ++index, arg);
+      continue;
+    }
+    if (arg === "--scan-inputs") {
+      args.scanInputs = true;
+      continue;
+    }
+    if (arg === "--min-rms") {
+      args.minRms = positiveNumber(requiredValue(argv, ++index, arg), arg);
       continue;
     }
     if (arg === "--out") {
@@ -101,6 +119,14 @@ function positiveInteger(raw, flag) {
   const value = Number.parseInt(raw, 10);
   if (!Number.isInteger(value) || value <= 0) {
     throw new Error(`${flag} must be a positive integer`);
+  }
+  return value;
+}
+
+function positiveNumber(raw, flag) {
+  const value = Number.parseFloat(raw);
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(`${flag} must be a positive number`);
   }
   return value;
 }
@@ -323,7 +349,7 @@ function measurementExpression(durationMs, intervalMs, threshold, rawAudio, devi
 `;
 }
 
-function classify(measurement) {
+function classify(measurement, threshold = KIWI_SPEECH_GATE) {
   if (measurement.error) {
     return {
       status: "blocked",
@@ -331,19 +357,195 @@ function classify(measurement) {
       aboveKiwiSpeechGate: false,
     };
   }
-  const above = measurement.maxRms > KIWI_SPEECH_GATE || measurement.aboveThresholdCount > 0;
+  const above = measurement.maxRms >= threshold || measurement.aboveThresholdCount > 0;
   if (!above) {
     return {
       status: "warning",
-      reason: `maxRms ${measurement.maxRms} did not exceed Kiwi speech gate ${KIWI_SPEECH_GATE}`,
+      reason: `maxRms ${measurement.maxRms} did not meet RMS gate ${threshold}`,
       aboveKiwiSpeechGate: false,
     };
   }
   return {
     status: "ok",
-    reason: `maxRms ${measurement.maxRms} exceeded Kiwi speech gate ${KIWI_SPEECH_GATE}`,
+    reason: `maxRms ${measurement.maxRms} met RMS gate ${threshold}`,
     aboveKiwiSpeechGate: true,
   };
+}
+
+function scanExpression(perDeviceMs, intervalMs, threshold, rawAudio) {
+  const rawAudioJson = JSON.stringify(Boolean(rawAudio));
+  return `
+(async () => {
+  const perDeviceMs = ${perDeviceMs};
+  const intervalMs = ${intervalMs};
+  const threshold = ${threshold};
+  const rawAudio = ${rawAudioJson};
+
+  function shortId(value) {
+    return value ? String(value).slice(0, 12) : "";
+  }
+
+  function constraintsFor(deviceId) {
+    const deviceConstraint = deviceId ? { deviceId: { exact: deviceId } } : {};
+    if (rawAudio) {
+      return {
+        audio: {
+          ...deviceConstraint,
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false
+        },
+        video: false
+      };
+    }
+    return {
+      audio: deviceId ? deviceConstraint : true,
+      video: false
+    };
+  }
+
+  async function ensurePermission() {
+    let stream = null;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    } finally {
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+      }
+    }
+  }
+
+  async function measureCandidate(candidate) {
+    const result = {
+      candidate: {
+        label: candidate.label || "",
+        deviceId: shortId(candidate.deviceId),
+        groupId: shortId(candidate.groupId)
+      },
+      requestedConstraints: constraintsFor(candidate.deviceId),
+      selectedAudioTrack: null,
+      sampleCount: 0,
+      maxRms: 0,
+      maxPeak: 0,
+      meanRms: 0,
+      aboveThresholdCount: 0,
+      samples: [],
+      error: null
+    };
+    let stream = null;
+    let context = null;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia(result.requestedConstraints);
+      const audioTrack = stream.getAudioTracks()[0];
+      if (audioTrack) {
+        const settings = audioTrack.getSettings ? audioTrack.getSettings() : {};
+        result.selectedAudioTrack = {
+          label: audioTrack.label || "",
+          deviceId: shortId(settings.deviceId),
+          sampleRate: settings.sampleRate || null,
+          channelCount: settings.channelCount || null,
+          echoCancellation: settings.echoCancellation ?? null,
+          noiseSuppression: settings.noiseSuppression ?? null,
+          autoGainControl: settings.autoGainControl ?? null
+        };
+      }
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      context = new AudioContextClass();
+      const source = context.createMediaStreamSource(stream);
+      const analyser = context.createAnalyser();
+      analyser.fftSize = 2048;
+      source.connect(analyser);
+      const data = new Float32Array(analyser.fftSize);
+      const startedAt = performance.now();
+      while (performance.now() - startedAt < perDeviceMs) {
+        analyser.getFloatTimeDomainData(data);
+        let sumSquares = 0;
+        let peak = 0;
+        for (const value of data) {
+          sumSquares += value * value;
+          peak = Math.max(peak, Math.abs(value));
+        }
+        const rms = Math.sqrt(sumSquares / data.length);
+        result.sampleCount += 1;
+        result.maxRms = Math.max(result.maxRms, rms);
+        result.maxPeak = Math.max(result.maxPeak, peak);
+        result.meanRms += rms;
+        if (rms >= threshold) {
+          result.aboveThresholdCount += 1;
+        }
+        result.samples.push({
+          tMs: Math.round(performance.now() - startedAt),
+          rms: Number(rms.toFixed(6)),
+          peak: Number(peak.toFixed(6))
+        });
+        await new Promise((resolve) => setTimeout(resolve, intervalMs));
+      }
+      result.meanRms = result.sampleCount ? result.meanRms / result.sampleCount : 0;
+      result.meanRms = Number(result.meanRms.toFixed(6));
+      result.maxRms = Number(result.maxRms.toFixed(6));
+      result.maxPeak = Number(result.maxPeak.toFixed(6));
+    } catch (error) {
+      result.error = String(error && error.message ? error.message : error);
+    } finally {
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+      }
+      if (context) {
+        await context.close();
+      }
+    }
+    return result;
+  }
+
+  const result = {
+    permissionState: null,
+    requestedConstraints: { scanInputs: true, rawAudio },
+    audioInputs: [],
+    rankings: [],
+    bestInput: null,
+    minRms: threshold,
+    error: null
+  };
+  try {
+    if (navigator.permissions && navigator.permissions.query) {
+      try {
+        const permission = await navigator.permissions.query({ name: "microphone" });
+        result.permissionState = permission.state;
+      } catch (error) {
+        result.permissionState = "unknown";
+      }
+    }
+    await ensurePermission();
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const candidates = [];
+    const seen = new Set();
+    for (const device of devices.filter((item) => item.kind === "audioinput")) {
+      if (seen.has(device.deviceId)) {
+        continue;
+      }
+      seen.add(device.deviceId);
+      candidates.push({
+        label: device.label || "",
+        deviceId: device.deviceId || "",
+        groupId: device.groupId || ""
+      });
+    }
+    result.audioInputs = candidates.map((candidate) => ({
+      label: candidate.label,
+      deviceId: shortId(candidate.deviceId),
+      groupId: shortId(candidate.groupId)
+    }));
+    for (const candidate of candidates) {
+      result.rankings.push(await measureCandidate(candidate));
+    }
+    result.rankings.sort((a, b) => (b.maxRms || 0) - (a.maxRms || 0));
+    result.bestInput = result.rankings[0] || null;
+  } catch (error) {
+    result.error = String(error && error.message ? error.message : error);
+  }
+  return result;
+})()
+`;
 }
 
 async function writeJson(path, data) {
@@ -369,12 +571,18 @@ async function main() {
     throw new Error(`No Kiwi dashboard tab found at ${args.dashboardUrl}`);
   }
 
-  const connection = new CdpConnection(target.webSocketDebuggerUrl, args.timeoutMs + args.durationMs);
+  const evalTimeoutMs = args.scanInputs
+    ? args.timeoutMs + args.perDeviceMs * 12
+    : args.timeoutMs + args.durationMs;
+  const connection = new CdpConnection(target.webSocketDebuggerUrl, evalTimeoutMs);
   await connection.connect();
   let evaluated;
   try {
+    const expression = args.scanInputs
+      ? scanExpression(args.perDeviceMs, args.intervalMs, args.minRms, args.rawAudio)
+      : measurementExpression(args.durationMs, args.intervalMs, args.minRms, args.rawAudio, args.deviceId);
     evaluated = await connection.send("Runtime.evaluate", {
-      expression: measurementExpression(args.durationMs, args.intervalMs, KIWI_SPEECH_GATE, args.rawAudio, args.deviceId),
+      expression,
       awaitPromise: true,
       returnByValue: true,
     });
@@ -383,11 +591,16 @@ async function main() {
   }
 
   const measurement = evaluated?.result?.value || { error: "Runtime.evaluate returned no measurement value" };
-  const verdict = classify(measurement);
+  const verdict = args.scanInputs
+    ? classify(measurement.bestInput || { error: measurement.error || "no browser audio inputs found" }, args.minRms)
+    : classify(measurement, args.minRms);
+  const status = args.scanInputs
+    ? (verdict.status === "ok" ? "passed" : "blocked")
+    : verdict.status;
   const record = {
     timestamp: nowIso(),
-    mode: "kiwi_browser_mic_level_probe",
-    status: verdict.status,
+    mode: args.scanInputs ? "kiwi_browser_mic_scan" : "kiwi_browser_mic_level_probe",
+    status,
     cdpUrl: args.cdpUrl,
     dashboardUrl: args.dashboardUrl,
     target: {
@@ -397,9 +610,12 @@ async function main() {
     },
     probe: {
       durationMs: args.durationMs,
+      perDeviceMs: args.perDeviceMs,
       intervalMs: args.intervalMs,
       rawAudio: args.rawAudio,
       deviceId: args.deviceId,
+      scanInputs: args.scanInputs,
+      minRms: args.minRms,
       kiwiSpeechGateMeanAbs: KIWI_SPEECH_GATE,
     },
     verdict,

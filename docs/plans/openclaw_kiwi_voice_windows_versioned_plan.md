@@ -130,6 +130,13 @@ Kiwi v7.2.5 Windows mic signal recovery gate:
   - browser standard probe maxRms 0.000086
   - browser raw-audio probe maxRms 0.000136
   - live dry-run smoke was not attempted; continue blocking on Windows input signal until maxRms >= 0.015
+
+Kiwi v7.2.6 Windows audio device audit:
+  - added native --scan-all and browser --scan-inputs ranking gates
+  - native best input rms 0.000015, peak 0.000031
+  - browser best input default USB mic maxRms 0.000161, maxPeak 0.000636
+  - no native/browser input reached minRms 0.015
+  - live dry-run smoke remains blocked on Windows mic hardware/driver/gain/routing
 ```
 
 현재 Node는 `system.run`, `system.run.prepare`, `system.which`, `screen.snapshot`, `camera.list`,
@@ -775,6 +782,35 @@ live dispatcher/browser/node execution: not attempted
 - Windows input meter가 실제 발화에 강하게 반응하도록 device/gain/mute/driver/routing을 먼저 고친다.
 - browser probe에서 `maxRms >= 0.015` 또는 `aboveThresholdCount > 0`가 나온 뒤 notify/cancel/critical live dry-run smoke를 재시도한다.
 - 그 전에는 owner voice, Telegram approval, Gateway v4 WebSocket compatibility, dispatcher live execution으로 넘어가지 않는다.
+
+### v7.2.6 - Windows audio device audit
+
+상태:
+
+```text
+scope: Windows/browser input device ranking only
+OPENCLAW_BIN: dry-run-openclaw.cmd
+KIWI_WS_ENABLED: false
+live dispatcher/browser/node execution: not attempted
+```
+
+구현:
+
+- `kiwi_windows_audio_probe.py`에 `--scan-all`, `--per-device-ms`, `--min-rms`를 추가했다.
+- `kiwi_browser_mic_level_probe.mjs`에 `--scan-inputs`, `--per-device-ms`, `--min-rms`를 추가했다.
+- `Taskfile.yml`에 `kiwi:windows-audio-scan`, `kiwi:browser-mic-scan`을 추가했다.
+
+결과:
+
+- native scan은 Windows input devices 전체를 ranking했지만 best RMS가 `0.000015`였다.
+- browser scan은 `default - 마이크(USB Audio Device) (0c76:160a)`가 best였고 `maxRms=0.000161`, `maxPeak=0.000636`이었다.
+- 모든 candidate의 `aboveThresholdCount=0`이며 minRms `0.015`를 통과하지 못했다.
+- live Web Microphone dry-run smoke는 중단했다.
+
+다음:
+
+- Windows input meter가 실제 발화에 충분히 반응할 때까지 physical mic, cable/adapter, mute switch, gain, privacy permission, driver, routing을 먼저 고친다.
+- scan에서 gate를 통과한 device index/deviceId가 생긴 뒤 v7.2.7 live dry-run smoke를 진행한다.
 
 ### Windows 설치 원칙
 

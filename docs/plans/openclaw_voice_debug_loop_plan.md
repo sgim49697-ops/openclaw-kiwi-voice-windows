@@ -744,6 +744,41 @@ Decision:
   - do not move to owner voice, Telegram approval, Gateway v4 WebSocket compatibility, or dispatcher live execution until browser maxRms >= 0.015.
 ```
 
+v7.2.6 result:
+
+```text
+Implementation:
+  - kiwi_windows_audio_probe.py now supports --scan-all, --per-device-ms, and --min-rms.
+  - kiwi_browser_mic_level_probe.mjs now supports --scan-inputs, --per-device-ms, and --min-rms.
+  - Taskfile recipes added: kiwi:windows-audio-scan and kiwi:browser-mic-scan.
+
+Preflight:
+  - repo started clean
+  - Kiwi ready and dashboard reachable
+  - OPENCLAW_BIN remains C:\Users\ksg63\projects\kiwi-voice\dry-run-openclaw.cmd
+  - KIWI_WS_ENABLED=false
+  - Gateway approvals remain security=allowlist, ask=always, askFallback=deny, autoAllowSkills=off
+
+Native scan:
+  - scanned all Windows input devices visible to sounddevice
+  - best native device index: 0, label: Microsoft audio input
+  - best native rms: 0.000015, peak: 0.000031
+  - USB Audio Device indexes still stayed at rms 0.000015 or 0.0
+  - no native input reached minRms 0.015
+
+Browser scan:
+  - scanned dashboard audioinput candidates through windows-cdp
+  - best browser candidate: default - 마이크(USB Audio Device) (0c76:160a)
+  - best browser maxRms: 0.000161, maxPeak: 0.000636
+  - aboveThresholdCount: 0
+  - no browser input reached minRms 0.015
+
+Decision:
+  - v7.2.6 is blocked on Windows audio input signal.
+  - live Web Microphone dry-run smoke was not attempted.
+  - next step is outside the automation path: replace/repair mic, change physical input, driver, gain, or routing until Windows/browser scan passes.
+```
+
 ---
 
 ## 15. Loop 8 — E2E

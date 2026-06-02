@@ -115,10 +115,20 @@ tasks:
     cmds:
       - node scripts/wsl/kiwi_browser_mic_level_probe.mjs
 
+  kiwi:browser-mic-scan:
+    desc: Rank browser microphone inputs through the Kiwi dashboard CDP tab.
+    cmds:
+      - node scripts/wsl/kiwi_browser_mic_level_probe.mjs --scan-inputs --per-device-ms {{.PER_DEVICE_MS | default 3000}} --min-rms {{.MIN_RMS | default 0.015}}
+
   kiwi:windows-audio-probe:
     desc: Measure Windows native microphone RMS through the Kiwi venv.
     cmds:
       - python3 scripts/wsl/kiwi_windows_audio_probe.py || python scripts/wsl/kiwi_windows_audio_probe.py
+
+  kiwi:windows-audio-scan:
+    desc: Rank Windows native microphone inputs through the Kiwi venv.
+    cmds:
+      - python3 scripts/wsl/kiwi_windows_audio_probe.py --scan-all --per-device-ms {{.PER_DEVICE_MS | default 3000}} --min-rms {{.MIN_RMS | default 0.015}} || python scripts/wsl/kiwi_windows_audio_probe.py --scan-all --per-device-ms {{.PER_DEVICE_MS | default 3000}} --min-rms {{.MIN_RMS | default 0.015}}
 
   debug:once:
     desc: Run one read-only debug monitor pass.

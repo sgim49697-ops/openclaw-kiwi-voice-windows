@@ -1187,6 +1187,7 @@ task check 통과 또는 task CLI 미설치 시 개별 validator 통과
 - [~] v7.2.3 Microphone input gain smoke: USB mic selected, RMS 미달
 - [~] v7.2.4 Windows native mic signal probe: native/browser 모두 RMS 미달
 - [~] v7.2.5 Windows mic signal recovery gate: 재측정 후에도 RMS 미달
+- [~] v7.2.6 Windows audio device audit: 전체 input scan에서도 RMS 미달
 - [ ] owner voice 등록
 - [ ] Telegram approval 연결
 - [ ] Gateway v4 WebSocket 호환 또는 CLI fallback 유지 결정
@@ -1324,6 +1325,19 @@ v7.2.5 결과:
 - aboveThresholdCount: 0
 - live dry-run smoke는 중단
 - 다음 gate: Windows input meter가 발화에 충분히 반응하고 browser maxRms >= 0.015를 통과해야 함
+```
+
+v7.2.6 결과:
+
+```text
+- native --scan-all, browser --scan-inputs ranking gate 추가
+- Taskfile recipes: kiwi:windows-audio-scan, kiwi:browser-mic-scan
+- native best input rms: 0.000015, peak: 0.000031
+- browser best input: default - 마이크(USB Audio Device) (0c76:160a)
+- browser best maxRms: 0.000161, maxPeak: 0.000636
+- aboveThresholdCount: 0
+- live dry-run smoke는 중단
+- 다음 gate: Windows mic physical signal 복구 후 scan 재통과
 ```
 
 정책 변경 전:

@@ -72,37 +72,17 @@ def choose_device(devices: list[dict], label: str | None, explicit_index: int | 
     return int(devices[0]["index"]) if devices else None
 
 
-def parse_args(argv):
-    parser = argparse.ArgumentParser(description="Measure Windows native microphone level.")
-    parser.add_argument("--duration-ms", type=int, default=5000)
-    parser.add_argument("--sample-rate", type=int, default=48000)
-    parser.add_argument("--channels", type=int, default=1)
-    parser.add_argument("--device-label", default="USB Audio Device")
-    parser.add_argument("--device-index", type=int)
-    parser.add_argument("--out", required=True)
-    return parser.parse_args(argv)
-
-
-def main(argv) -> int:
-    args = parse_args(argv)
-    devices = input_devices()
-    device_index = choose_device(devices, args.device_label, args.device_index)
+def measure_device(device_index: int, args) -> dict:
     record = {
-        "timestamp": now_iso(),
-        "mode": "kiwi_windows_audio_probe",
-        "status": "blocked",
+        "deviceIndex": device_index,
         "durationMs": args.duration_ms,
         "sampleRate": args.sample_rate,
         "channels": args.channels,
-        "deviceLabel": args.device_label,
-        "deviceIndex": device_index,
-        "devices": devices,
         "measurement": None,
+        "status": "blocked",
         "error": None,
     }
     try:
-        if device_index is None:
-            raise RuntimeError("no input devices found")
         frames = max(1, int(args.sample_rate * args.duration_ms / 1000))
         audio = sd.rec(frames, samplerate=args.sample_rate, channels=args.channels, dtype="float32", device=device_index)
         sd.wait()
@@ -119,12 +99,78 @@ def main(argv) -> int:
         record["status"] = "ok"
     except Exception as exc:
         record["error"] = str(exc)
+    return record
+
+
+def parse_args(argv):
+    parser = argparse.ArgumentParser(description="Measure Windows native microphone level.")
+    parser.add_argument("--duration-ms", type=int, default=5000)
+    parser.add_argument("--per-device-ms", type=int, default=3000)
+    parser.add_argument("--sample-rate", type=int, default=48000)
+    parser.add_argument("--channels", type=int, default=1)
+    parser.add_argument("--device-label", default="USB Audio Device")
+    parser.add_argument("--device-index", type=int)
+    parser.add_argument("--scan-all", action="store_true")
+    parser.add_argument("--min-rms", type=float, default=0.015)
+    parser.add_argument("--out", required=True)
+    return parser.parse_args(argv)
+
+
+def main(argv) -> int:
+    args = parse_args(argv)
+    devices = input_devices()
+    device_index = choose_device(devices, args.device_label, args.device_index)
+    record = {
+        "timestamp": now_iso(),
+        "mode": "kiwi_windows_audio_scan" if args.scan_all else "kiwi_windows_audio_probe",
+        "status": "blocked",
+        "durationMs": args.duration_ms,
+        "perDeviceMs": args.per_device_ms,
+        "sampleRate": args.sample_rate,
+        "channels": args.channels,
+        "deviceLabel": args.device_label,
+        "deviceIndex": device_index,
+        "minRms": args.min_rms,
+        "scanAll": args.scan_all,
+        "devices": devices,
+        "measurement": None,
+        "rankings": [],
+        "bestDevice": None,
+        "error": None,
+    }
+    try:
+        if device_index is None:
+            raise RuntimeError("no input devices found")
+        if args.scan_all:
+            scan_args = argparse.Namespace(
+                duration_ms=args.per_device_ms,
+                sample_rate=args.sample_rate,
+                channels=args.channels,
+            )
+            for device in devices:
+                measurement = measure_device(int(device["index"]), scan_args)
+                measurement["device"] = device
+                record["rankings"].append(measurement)
+            record["rankings"].sort(
+                key=lambda item: (item.get("measurement") or {}).get("rms", -1),
+                reverse=True,
+            )
+            record["bestDevice"] = record["rankings"][0] if record["rankings"] else None
+            best_rms = ((record["bestDevice"] or {}).get("measurement") or {}).get("rms", 0)
+            record["status"] = "passed" if best_rms >= args.min_rms else "blocked"
+        else:
+            measurement = measure_device(device_index, args)
+            record["measurement"] = measurement.get("measurement")
+            record["error"] = measurement.get("error")
+            record["status"] = measurement.get("status", "blocked")
+    except Exception as exc:
+        record["error"] = str(exc)
 
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(record, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(json.dumps(record, ensure_ascii=False, indent=2, sort_keys=True))
-    return 0 if record["status"] == "ok" else 1
+    return 1 if record["error"] else 0
 
 
 if __name__ == "__main__":
@@ -177,10 +223,13 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Measure Windows native microphone RMS through the Kiwi venv.")
     parser.add_argument("--kiwi-path", default=DEFAULT_KIWI_PATH)
     parser.add_argument("--duration-ms", type=int, default=5000)
+    parser.add_argument("--per-device-ms", type=int, default=3000)
     parser.add_argument("--sample-rate", type=int, default=48000)
     parser.add_argument("--channels", type=int, default=1)
     parser.add_argument("--device-label", default="USB Audio Device")
     parser.add_argument("--device-index", type=int)
+    parser.add_argument("--scan-all", action="store_true")
+    parser.add_argument("--min-rms", type=float, default=0.015)
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
     parser.add_argument("--worker", type=Path, default=DEFAULT_WORKER)
     return parser.parse_args(argv)
@@ -190,6 +239,9 @@ def main(argv: Sequence[str]) -> int:
     args = parse_args(argv)
     if args.duration_ms <= 0:
         print("--duration-ms must be positive", file=sys.stderr)
+        return 2
+    if args.per_device_ms <= 0:
+        print("--per-device-ms must be positive", file=sys.stderr)
         return 2
     if args.sample_rate <= 0:
         print("--sample-rate must be positive", file=sys.stderr)
@@ -212,12 +264,16 @@ def main(argv: Sequence[str]) -> int:
         "if (-not (Test-Path -LiteralPath $python)) { throw \"Kiwi venv python not found: $python\" }; "
         "& $python $worker "
         f"--duration-ms {args.duration_ms} "
+        f"--per-device-ms {args.per_device_ms} "
         f"--sample-rate {args.sample_rate} "
         f"--channels {args.channels} "
+        f"--min-rms {args.min_rms} "
         "--device-label " + ps_literal(args.device_label) + " "
     )
     if args.device_index is not None:
         command += f"--device-index {args.device_index} "
+    if args.scan_all:
+        command += "--scan-all "
     command += "--out $out"
 
     completed = run_powershell(command, timeout=max(20, int(args.duration_ms / 1000) + 20))
