@@ -52,18 +52,20 @@ Windows dispatcher:
   - payloadHash mismatch 거부 성공
 
 Browser:
-  - openclaw profile status/tabs/open 성공
-  - raw CDP Browser.getVersion 성공
-  - raw CDP page command Runtime.evaluate timeout
-  - OpenClaw doctor live-snapshot, snapshot, screenshot timeout
+  - local openclaw profile reset 직후 raw CDP Runtime/Page/Accessibility 일시 성공
+  - local openclaw profile 재시작 후 rendererCount 0 / raw CDP page command timeout 재발
+  - local openclaw profile의 OpenClaw wrapper doctor/snapshot/screenshot은 계속 timeout
+  - Windows dedicated Chrome CDP profile windows-cdp 추가
+  - windows-cdp profile open/doctor/snapshot/screenshot/console/errors 성공
+  - browser.defaultProfile: windows-cdp
 ```
 
 현재 Node는 `system.run`, `system.run.prepare`, `system.which`, `screen.snapshot`, `camera.list`,
 `location.get`, `browser.proxy` 같은 command를 선언한다. 개인 PC라 즉시 외부 노출 사고로
 보지는 않지만, 이후 voice/agent/browser 자동화와 결합되면 실행 범위가 넓어질 수 있다.
 
-따라서 다음 기본 진행 단계는 v4 Browser read 복구다. 현재 문제는 `browser.request` 미지원이 아니라
-CDP browser endpoint는 살아 있지만 page-level CDP command가 timeout되는 상태다.
+따라서 v4 Browser read는 Windows dedicated Chrome remote CDP fallback으로 통과 상태로 본다.
+local managed `openclaw` profile의 wrapper timeout은 별도 추적하되, 기본 Browser lane은 `windows-cdp`를 사용한다.
 Kiwi Voice는 Browser/Codex/dispatcher 권한 경계가 확인된 뒤 마지막에 통합한다.
 
 ## v0 - 문서 기준선 정리
@@ -303,8 +305,10 @@ scroll
 ### 검증
 
 ```bash
-node scripts/wsl/cdp_probe.mjs
+node scripts/wsl/cdp_probe.mjs --cdp-url http://127.0.0.1:18800
+node scripts/wsl/cdp_probe.mjs --cdp-url http://127.0.0.1:9222 --out .debugloop/artifacts/browser/windows-cdp-probe.json
 python3 scripts/wsl/browser_probe.py --profile openclaw --url https://example.com --snapshot-limit 200
+python3 scripts/wsl/browser_probe.py --profile windows-cdp --url https://example.com --snapshot-limit 200
 openclaw browser --browser-profile openclaw doctor --deep
 openclaw browser --browser-profile openclaw start
 openclaw browser --browser-profile openclaw open "https://example.com"
@@ -315,20 +319,33 @@ openclaw browser --browser-profile openclaw screenshot --full-page --out /tmp/br
 ### 현재 진단 결과
 
 ```text
-status/tabs/open: OK
-raw CDP /json/version, /json/list, Browser.getVersion: OK
-raw CDP Runtime.evaluate(document.title): timeout on all page targets
-raw CDP Page.captureScreenshot: blocked
-raw CDP Accessibility.getFullAXTree: timeout
-OpenClaw doctor live-snapshot: timeout
-OpenClaw snapshot/screenshot: timeout
+local openclaw before reset:
+  raw CDP /json/version, /json/list, Browser.getVersion: OK
+  raw CDP Runtime.evaluate/Page.captureScreenshot/Accessibility.getFullAXTree: timeout
+  rendererCount: 0
+
+local openclaw after reset:
+  raw CDP Runtime.evaluate/Page.captureScreenshot/Accessibility.getFullAXTree: temporarily OK
+  rendererCount: 2+ immediately after reset, later regressed to 0
+  OpenClaw doctor live-snapshot/snapshot/screenshot: timeout
+
+linux headless/noSandbox retry:
+  raw CDP: OK
+  OpenClaw wrapper: timeout
+  config restored from backup
+
+windows-cdp fallback:
+  raw CDP Runtime.evaluate/Page.captureScreenshot/Accessibility.getFullAXTree: OK
+  OpenClaw browser_probe status/tabs/open/doctor/snapshot/screenshot/console/errors: OK
 ```
 
 판정:
 
 ```text
-OpenClaw browser wrapper만의 문제가 아니라 Chromium page-level CDP command 처리도 멈추는 상태다.
-다음 복구는 profile reset 또는 Chromium/headless/CDP 실행 옵션 점검으로 진행한다.
+초기 문제는 local managed openclaw profile의 renderer/CDP 상태 손상으로 시작했다.
+profile reset으로 raw CDP가 일시 복구됐지만 local managed profile은 재시작 후 rendererCount 0 상태가 재발했다.
+OpenClaw wrapper connectOverCDP timeout도 local managed profile에서 계속 남았다.
+운영 기본값은 Windows dedicated Chrome remote CDP profile windows-cdp로 전환한다.
 ```
 
 ### 완료 조건
