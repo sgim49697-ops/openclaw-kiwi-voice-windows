@@ -173,6 +173,15 @@ def extract_ref(snapshot: str, label: str) -> str | None:
     return None
 
 
+def extract_fixture_refs(snapshot: str) -> dict[str, str | None]:
+    return {
+        "click": extract_ref(snapshot, "Smoke Click Button"),
+        "type": extract_ref(snapshot, "Smoke Type Input"),
+        "fill": extract_ref(snapshot, "Smoke Fill Input"),
+        "select": extract_ref(snapshot, "Smoke Select Box"),
+    }
+
+
 def extract_tab_label(output: str) -> str | None:
     match = re.search(r"\btab:\s*(t\d+)\b", output)
     return match.group(1) if match else None
@@ -308,12 +317,7 @@ def build_probe(args: argparse.Namespace) -> dict:
                 return blocked_record(args, checks, name, result.output, fixture_url=fixture_url)
 
         assert initial_snapshot is not None
-        refs = {
-            "click": extract_ref(initial_snapshot.output, "Smoke Click Button"),
-            "type": extract_ref(initial_snapshot.output, "Smoke Type Input"),
-            "fill": extract_ref(initial_snapshot.output, "Smoke Fill Input"),
-            "select": extract_ref(initial_snapshot.output, "Smoke Select Box"),
-        }
+        refs = extract_fixture_refs(initial_snapshot.output)
         missing_refs = [name for name, ref in refs.items() if not ref]
         if missing_refs:
             return blocked_record(
@@ -324,18 +328,34 @@ def build_probe(args: argparse.Namespace) -> dict:
                 fixture_url=fixture_url,
             )
 
-        interactions: list[tuple[str, list[str], str]] = [
-            ("click", browser_command(args.profile, "click", refs["click"]), "click: Smoke Click Button clicked"),
-            ("type", browser_command(args.profile, "type", refs["type"], "typed-smoke"), "type: typed-smoke"),
+        interactions = [
+            ("click", lambda current_refs: browser_command(args.profile, "click", current_refs["click"]), "click: Smoke Click Button clicked"),
+            ("type", lambda current_refs: browser_command(args.profile, "type", current_refs["type"], "typed-smoke"), "type: typed-smoke"),
             (
                 "fill",
-                browser_command(args.profile, "fill", "--fields", json.dumps([{"ref": refs["fill"], "value": "filled-smoke"}])),
+                lambda current_refs: browser_command(
+                    args.profile,
+                    "fill",
+                    "--fields",
+                    json.dumps([{"ref": current_refs["fill"], "value": "filled-smoke"}]),
+                ),
                 "fill: filled-smoke",
             ),
-            ("select", browser_command(args.profile, "select", refs["select"], "Bravo Option"), "select: bravo"),
+            ("select", lambda current_refs: browser_command(args.profile, "select", current_refs["select"], "Bravo Option"), "select: bravo"),
         ]
 
-        for name, command, expected_text in interactions:
+        for name, command_builder, expected_text in interactions:
+            missing_for_step = [key for key, value in refs.items() if not value]
+            if missing_for_step:
+                return blocked_record(
+                    args,
+                    checks,
+                    f"{name}_ref_refresh",
+                    f"missing refs before {name}: {missing_for_step}",
+                    fixture_url=fixture_url,
+                )
+
+            command = command_builder(refs)
             result = run_safe(name, command, timeout=45)
             checks.append(command_record(result, required=True, expected_text=expected_text))
             if result.returncode != 0:
@@ -346,6 +366,7 @@ def build_probe(args: argparse.Namespace) -> dict:
             checks.append(command_record(snapshot, required=True, expected_text=expected_text))
             if snapshot.returncode != 0:
                 return blocked_record(args, checks, f"{name}_snapshot", snapshot.output, fixture_url=fixture_url)
+            refs.update({key: value for key, value in extract_fixture_refs(snapshot.output).items() if value})
 
         screenshot = run_safe("screenshot", browser_command(args.profile, "screenshot"), timeout=45)
         checks.append(command_record(screenshot, required=True))
