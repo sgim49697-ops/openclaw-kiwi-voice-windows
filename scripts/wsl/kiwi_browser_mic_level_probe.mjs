@@ -204,6 +204,8 @@ function measurementExpression(durationMs, intervalMs, threshold) {
   const threshold = ${threshold};
   const result = {
     permissionState: null,
+    audioInputs: [],
+    selectedAudioTrack: null,
     sampleCount: 0,
     maxRms: 0,
     maxPeak: 0,
@@ -222,6 +224,33 @@ function measurementExpression(durationMs, intervalMs, threshold) {
       }
     }
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        result.audioInputs = devices
+          .filter((device) => device.kind === "audioinput")
+          .map((device) => ({
+            label: device.label || "",
+            deviceId: device.deviceId ? String(device.deviceId).slice(0, 12) : "",
+            groupId: device.groupId ? String(device.groupId).slice(0, 12) : ""
+          }));
+      } catch (error) {
+        result.audioInputs = [{ error: String(error && error.message ? error.message : error) }];
+      }
+    }
+    const audioTrack = stream.getAudioTracks()[0];
+    if (audioTrack) {
+      const settings = audioTrack.getSettings ? audioTrack.getSettings() : {};
+      result.selectedAudioTrack = {
+        label: audioTrack.label || "",
+        deviceId: settings.deviceId ? String(settings.deviceId).slice(0, 12) : "",
+        sampleRate: settings.sampleRate || null,
+        channelCount: settings.channelCount || null,
+        echoCancellation: settings.echoCancellation ?? null,
+        noiseSuppression: settings.noiseSuppression ?? null,
+        autoGainControl: settings.autoGainControl ?? null
+      };
+    }
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     const context = new AudioContextClass();
     const source = context.createMediaStreamSource(stream);

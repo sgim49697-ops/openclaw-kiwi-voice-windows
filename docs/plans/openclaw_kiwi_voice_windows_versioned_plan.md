@@ -105,6 +105,15 @@ Kiwi v7.2.2 audio/STT/wake calibration:
   - synthetic tone은 Speech segment → PROCESS → WHISPER까지 도달, detected language=ko 확인
   - browser mic permission은 granted지만 maxRms 0.000129로 speech gate 0.015 미만
   - 다음은 Windows input device/gain 보정 후 live transcript dry-run 재시도
+
+Kiwi v7.2.3 microphone gain smoke:
+  - preflight/gateway/node/Kiwi dry-run shim 모두 정상
+  - dashboard tab은 windows-cdp로 열림
+  - selected browser input: 마이크(USB Audio Device) (0c76:160a)
+  - permission granted, sampleRate 48000, channelCount 1
+  - 8초 발화 probe maxRms 0.00015, 1초 device-check maxRms 0.000151
+  - speech gate 0.015 미달로 live Web Microphone dry-run smoke는 중단
+  - 현 blocker는 Windows input volume/mute/device/physical mic signal
 ```
 
 현재 Node는 `system.run`, `system.run.prepare`, `system.which`, `screen.snapshot`, `camera.list`,
@@ -671,6 +680,32 @@ local Kiwi backup: C:\Users\ksg63\projects\kiwi-voice\.codex-backups\v7.2.2-2026
 - Whisper detected language는 `ko`, probability `1.00`이었다.
 - browser mic probe는 permission `granted`였지만 maxRms `0.000129`로 gate `0.015` 미만이었다.
 - 현 blocker는 Kiwi code path가 아니라 Windows/browser microphone input level 또는 speaking-window 재측정이다.
+
+### v7.2.3 - Microphone input gain smoke
+
+상태:
+
+```text
+scope: microphone input calibration only
+OPENCLAW_BIN: dry-run-openclaw.cmd
+KIWI_WS_ENABLED: false
+live dispatcher/browser/node execution: not attempted
+```
+
+결과:
+
+- Kiwi readiness probe와 live dry-run shim probe는 통과했다.
+- Gateway approvals는 `allowlist + ask=always + askFallback=deny + autoAllowSkills=off`를 유지했다.
+- Windows Node는 `Known/Paired/Connected = 1/1/1`을 유지했다.
+- browser mic probe는 `마이크(USB Audio Device) (0c76:160a)`를 선택된 audio track으로 기록했다.
+- `maxRms=0.00015`, `aboveThresholdCount=0`으로 speech gate `0.015`에 도달하지 못했다.
+- live Web Microphone dry-run smoke는 중단했고, transcript shim log 검증은 다음 반복으로 유지한다.
+
+다음:
+
+- Windows Sound input에서 같은 USB microphone의 input meter가 말할 때 움직이는지 확인한다.
+- input volume을 80-100으로 설정하고 mute/driver/device routing을 확인한다.
+- `kiwi_browser_mic_level_probe.mjs`가 `maxRms >= 0.015`를 기록한 뒤 live notify/cancel/critical smoke를 재시도한다.
 
 ### Windows 설치 원칙
 

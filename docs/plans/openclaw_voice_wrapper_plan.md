@@ -1184,6 +1184,7 @@ task check 통과 또는 task CLI 미설치 시 개별 validator 통과
 - [x] v7.2 live transcript dry-run OpenClaw shim 추가
 - [~] v7.2.1 Web Microphone 연결 smoke: connected, transcript 미검출
 - [~] v7.2.2 Audio/STT/wake calibration helper 추가, mic RMS 미달 확인
+- [~] v7.2.3 Microphone input gain smoke: USB mic selected, RMS 미달
 - [ ] owner voice 등록
 - [ ] Telegram approval 연결
 - [ ] Gateway v4 WebSocket 호환 또는 CLI fallback 유지 결정
@@ -1283,6 +1284,19 @@ v7.2.2 결과:
 - browser microphone permission: granted
 - browser microphone maxRms: 0.000129 < speech gate 0.015
 - 다음 gate: Windows input device/gain 또는 speaking-window 재측정 후 transcript가 dry-run shim에 도달하는지 확인
+```
+
+v7.2.3 결과:
+
+```text
+- selected browser input: 마이크(USB Audio Device) (0c76:160a)
+- microphone permission: granted
+- sampleRate/channelCount: 48000/1
+- 8초 발화 maxRms: 0.00015
+- 1초 device-check maxRms: 0.000151
+- Kiwi speech gate: 0.015
+- live Web Microphone dry-run smoke는 gate 미달로 중단
+- 다음 gate: Windows input meter/volume/mute/device routing 보정 후 RMS 재측정
 ```
 
 정책 변경 전:

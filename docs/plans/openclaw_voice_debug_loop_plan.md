@@ -636,6 +636,45 @@ After browser mic RMS exceeds 0.015, repeat live notify/cancel/critical smoke.
 Do not move to owner voice, Telegram approval, or Gateway v4 WebSocket compatibility until transcript reaches the dry-run shim.
 ```
 
+v7.2.3 result:
+
+```text
+Preflight:
+  - repo clean
+  - Kiwi ready
+  - OPENCLAW_BIN remains C:\Users\ksg63\projects\kiwi-voice\dry-run-openclaw.cmd
+  - KIWI_WS_ENABLED=false
+  - Gateway approvals remain security=allowlist, ask=always, askFallback=deny, autoAllowSkills=off
+  - Windows Node remains paired/connected
+
+Runtime capture:
+  - scripts/wsl/kiwi_runtime_capture.py start OK
+  - Kiwi log capture file: .debugloop/artifacts/kiwi/kiwi-runtime-20260602-153306.out.log
+  - startup logs show OPENCLAW dry-run bridge, WEB_AUDIO bridge, and WHISPER model load
+
+Microphone level:
+  - dashboard tab opened through windows-cdp
+  - microphone permission: granted
+  - selected browser audio track: 마이크(USB Audio Device) (0c76:160a)
+  - sampleRate: 48000, channelCount: 1
+  - echoCancellation/noiseSuppression/autoGainControl: true
+  - 8s phrase probe maxRms: 0.00015
+  - 1s device-check probe maxRms: 0.000151
+  - Kiwi speech gate: 0.015
+
+Decision:
+  - live Web Microphone dry-run smoke was not attempted because RMS did not meet the gate.
+  - blocker remains Windows input device/gain/mute/physical microphone signal, not Kiwi WebAudioBridge or STT code.
+```
+
+v7.2.3 next action:
+
+```text
+In Windows Sound settings, confirm that 마이크(USB Audio Device) (0c76:160a) receives visible input while speaking.
+Set input volume to 80-100, disable mute, and test close-range speech.
+Then rerun kiwi_browser_mic_level_probe.mjs until maxRms >= 0.015 before trying live notify/cancel/critical smoke.
+```
+
 ---
 
 ## 15. Loop 8 — E2E
