@@ -27,9 +27,9 @@
 | v7 | Kiwi Voice 통합 | Windows native Kiwi, speaker ID, Telegram approval | 음성 호출이 planner 승인 흐름까지 도달 |
 | v8 | 운영 안정화 | 로그/백업/롤백/정책 문서화 | end-to-end smoke test와 롤백 절차 확인 |
 
-## 현재 진행 상태 - 2026-06-01
+## 현재 진행 상태 - 2026-06-02
 
-v1 Gateway와 v2 Windows Node 최소 연결은 통과 상태로 본다.
+v1 Gateway, v2 Windows Node 최소 연결, v3 dispatcher-only Windows 실행 경계는 통과 상태로 본다.
 
 ```text
 Gateway:
@@ -44,17 +44,27 @@ Windows Node:
   - Connected: 1
   - safe smoke test: device.status, system.notify, screen.snapshot 성공
   - pending request: []
+
+Windows dispatcher:
+  - C:\OpenClawActions\Invoke-OpenClawAction.ps1 배포 완료
+  - Windows Node local exec-policy dispatcher-only + default deny 적용
+  - dispatcher notify direct smoke 성공
+  - payloadHash mismatch 거부 성공
+
+Browser:
+  - openclaw profile status/tabs/open 성공
+  - raw CDP Browser.getVersion 성공
+  - raw CDP page command Runtime.evaluate timeout
+  - OpenClaw doctor live-snapshot, snapshot, screenshot timeout
 ```
 
 현재 Node는 `system.run`, `system.run.prepare`, `system.which`, `screen.snapshot`, `camera.list`,
 `location.get`, `browser.proxy` 같은 command를 선언한다. 개인 PC라 즉시 외부 노출 사고로
 보지는 않지만, 이후 voice/agent/browser 자동화와 결합되면 실행 범위가 넓어질 수 있다.
 
-따라서 다음 기본 진행 단계는 v3이며, 목표는 `system.run`을 바로 쓰는 것이 아니라
-Windows Node local exec policy를 **central dispatcher-only**로 잠그는 것이다.
-
-Browser lane은 아직 `unknown method: browser.request` 상태이므로 v3 완료 뒤 별도 복구 batch로
-진행한다. Kiwi Voice는 Browser/Codex/dispatcher 권한 경계가 확인된 뒤 마지막에 통합한다.
+따라서 다음 기본 진행 단계는 v4 Browser read 복구다. 현재 문제는 `browser.request` 미지원이 아니라
+CDP browser endpoint는 살아 있지만 page-level CDP command가 timeout되는 상태다.
+Kiwi Voice는 Browser/Codex/dispatcher 권한 경계가 확인된 뒤 마지막에 통합한다.
 
 ## v0 - 문서 기준선 정리
 
@@ -277,6 +287,7 @@ openclaw nodes invoke --node <WINDOWS_NODE_ID> --command system.execApprovals.ge
 - 기본 프로필을 `openclaw`로 설정
 - Windows Node browser proxy 또는 remote CDP fallback 중 하나 선택
 - 개인 `user` 프로필은 사용하지 않는다.
+- raw CDP probe로 OpenClaw wrapper 문제와 Chromium/CDP 문제를 분리한다.
 
 ### 허용 범위
 
@@ -292,11 +303,32 @@ scroll
 ### 검증
 
 ```bash
+node scripts/wsl/cdp_probe.mjs
+python3 scripts/wsl/browser_probe.py --profile openclaw --url https://example.com --snapshot-limit 200
 openclaw browser --browser-profile openclaw doctor --deep
 openclaw browser --browser-profile openclaw start
 openclaw browser --browser-profile openclaw open "https://example.com"
 openclaw browser --browser-profile openclaw snapshot
 openclaw browser --browser-profile openclaw screenshot --full-page --out /tmp/browser-read-ok.png
+```
+
+### 현재 진단 결과
+
+```text
+status/tabs/open: OK
+raw CDP /json/version, /json/list, Browser.getVersion: OK
+raw CDP Runtime.evaluate(document.title): timeout on all page targets
+raw CDP Page.captureScreenshot: blocked
+raw CDP Accessibility.getFullAXTree: timeout
+OpenClaw doctor live-snapshot: timeout
+OpenClaw snapshot/screenshot: timeout
+```
+
+판정:
+
+```text
+OpenClaw browser wrapper만의 문제가 아니라 Chromium page-level CDP command 처리도 멈추는 상태다.
+다음 복구는 profile reset 또는 Chromium/headless/CDP 실행 옵션 점검으로 진행한다.
 ```
 
 ### 완료 조건

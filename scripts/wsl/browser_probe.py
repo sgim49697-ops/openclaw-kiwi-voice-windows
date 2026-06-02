@@ -147,11 +147,14 @@ def build_probe(args: argparse.Namespace) -> dict:
     ]
     if not args.no_open:
         steps.append(("open", browser_command(args.profile, "open", args.url), True, 30))
+    if not args.skip_doctor:
+        steps.append(("doctor", browser_command(args.profile, "doctor", "--deep"), True, 45))
+    if not args.skip_snapshot:
+        steps.append(("snapshot", browser_command(args.profile, "snapshot", "--format", "aria", "--limit", str(args.snapshot_limit)), True, 45))
+    if not args.skip_screenshot:
+        steps.append(("screenshot", browser_command(args.profile, "screenshot"), True, 45))
     steps.extend(
         [
-            ("doctor", browser_command(args.profile, "doctor", "--deep"), True, 45),
-            ("snapshot", browser_command(args.profile, "snapshot", "--format", "aria", "--limit", str(args.snapshot_limit)), True, 45),
-            ("screenshot", browser_command(args.profile, "screenshot"), True, 45),
             ("console", browser_command(args.profile, "console"), False, 45),
             ("errors", browser_command(args.profile, "errors"), False, 45),
         ]
@@ -208,6 +211,9 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser.add_argument("--url", default=DEFAULT_URL, help="Safe read-only URL to open.")
     parser.add_argument("--snapshot-limit", type=int, default=200, help="Snapshot output limit.")
     parser.add_argument("--no-open", action="store_true", help="Skip opening the URL before probing live commands.")
+    parser.add_argument("--skip-doctor", action="store_true", help="Skip the deep browser doctor step.")
+    parser.add_argument("--skip-snapshot", action="store_true", help="Skip the OpenClaw browser snapshot step.")
+    parser.add_argument("--skip-screenshot", action="store_true", help="Skip the OpenClaw browser screenshot step.")
     parser.add_argument("--no-write-log", action="store_true", help="Do not append probe result to JSONL log.")
     parser.add_argument("--log-path", type=Path, default=DEFAULT_LOG_PATH, help="JSONL log path.")
     return parser.parse_args(argv)
