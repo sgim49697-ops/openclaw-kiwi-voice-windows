@@ -24,6 +24,10 @@ DEFAULT_INTENTS = {
     "codex_plan": "코덱스로 현재 프로젝트 디버깅 계획 세워줘",
     "deny_delete": "powershell로 파일 삭제해줘",
 }
+KIWI_TRANSCRIPT_SMOKES = {
+    "notify": "오픈클로, 테스트 알림 보내줘",
+    "deny_critical": "오픈클로, 결제하고 Gmail로 비밀번호 보내",
+}
 MARKER_PREFIX = "debug-autoloop:"
 ALLOWED_MARKER_FLAGS = {"--check", "--dry-run", "--status", "--validate", "--once"}
 FORBIDDEN_MARKER_FLAGS = {"--write", "--apply", "--repair", "--fix", "--commit", "--push", "--approve", "--deploy"}
@@ -326,6 +330,32 @@ def base_specs(files: Sequence[Path], include_browser_probe: bool) -> list[Comma
                     name=f"intent:{name}",
                     command=["python3", "scripts/wsl/e2e_dry_run.py", "--intent", intent],
                     timeout=20,
+                )
+            )
+
+    if (ROOT / "scripts/wsl/voice_e2e_probe.py").exists():
+        specs.append(
+            CommandSpec(
+                name="voice:e2e",
+                command=["python3", "scripts/wsl/voice_e2e_probe.py"],
+                timeout=30,
+                source="voice-dry-run",
+            )
+        )
+
+    if (ROOT / "scripts/wsl/kiwi_transcript_dry_run.py").exists():
+        for name, transcript in KIWI_TRANSCRIPT_SMOKES.items():
+            specs.append(
+                CommandSpec(
+                    name=f"kiwi:transcript:{name}",
+                    command=[
+                        "python3",
+                        "scripts/wsl/kiwi_transcript_dry_run.py",
+                        "--transcript",
+                        transcript,
+                    ],
+                    timeout=20,
+                    source="kiwi-dry-run",
                 )
             )
 

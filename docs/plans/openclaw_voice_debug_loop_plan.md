@@ -99,7 +99,7 @@ task browser:probe        # isolated openclaw profile read probe
 
 `task --watch`는 빠른 read-only check에만 사용한다. long-running child process나 실제 실행 task에는 사용하지 않는다.
 
-`debug:autoloop`는 repo 파일을 직접 수정하지 않는다. 현재 tracked/untracked 파일을 스캔해 정책/스키마/Python compile/dry-run/monitor/probe를 자동 구성하고, 결과를 `.debugloop/runs/autoloop.jsonl`과 `.debugloop/runs/latest-summary.md`에 기록한다. 새 스크립트는 기본적으로 compile만 수행하며, 실행은 allowlisted check 또는 `# debug-autoloop: command=...` marker가 있는 경우에만 자동 편입한다.
+`debug:autoloop`는 repo 파일을 직접 수정하지 않는다. 현재 tracked/untracked 파일을 스캔해 정책/스키마/Python compile/dry-run/monitor/probe를 자동 구성하고, 결과를 `.debugloop/runs/autoloop.jsonl`과 `.debugloop/runs/latest-summary.md`에 기록한다. 새 스크립트는 기본적으로 compile만 수행하며, 실행은 allowlisted check 또는 `# debug-autoloop: command=...` marker가 있는 경우에만 자동 편입한다. 예외적으로 repo-local voice/Kiwi dry-run 계약은 안전한 no-write smoke로 간주해 `voice_e2e_probe.py`와 `kiwi_transcript_dry_run.py`가 존재하면 자동 실행한다.
 
 `debug:agent`는 autoloop 결과를 입력으로 받아 L2 repair marker가 있는 실패만 자동 수정 대상으로 처리한다. `# debug-autoloop: command=...` marker는 read-only check 전용이며, 자동 수정은 같은 파일의 check marker 실패와 `# debug-agent: repair=python3 <same-file> --repair --confirm-safe-l2` marker가 동시에 있을 때만 실행된다. 수정 허용 경로는 `docs/`, `policies/`, `schemas/`, `tests/`, `evals/`, `scripts/wsl/`로 제한한다.
 
@@ -515,6 +515,7 @@ python3 scripts/wsl/voice_e2e_probe.py 통과
 notify/Codex plan은 wouldExecute=false + approvalRequest 생성
 browser intent는 browser lane dry-run으로만 남음
 critical intent는 approvalRequest=null
+debug_autoloop.py가 voice:e2e와 kiwi:transcript smoke를 자동 실행
 ```
 
 v7.1 gate:
@@ -526,6 +527,7 @@ Windows OpenClaw CLI fallback으로 Kiwi startup 성공
 Dashboard http://127.0.0.1:7789 reachable, Playwright snapshot OK
 Gateway v4와 Kiwi Gateway v3 WebSocket client는 protocol mismatch로 별도 추적
 STT transcript는 scripts/wsl/kiwi_transcript_dry_run.py로 dry-run routing 확인
+Windows host probe는 PowerShell을 호출하므로 기본 autoloop에는 넣지 않고 명시 gate로만 실행
 ```
 
 ---
