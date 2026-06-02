@@ -81,6 +81,12 @@ Kiwi v7.1 prep:
   - Kiwi dashboard http://127.0.0.1:7789 reachable, Playwright snapshot에서 Kiwi Voice 확인
   - Gateway v4와 Kiwi Gateway v3 WebSocket mismatch 때문에 v7.1은 Windows OpenClaw CLI fallback으로 기동
   - repo-local Kiwi Windows readiness probe, config template, transcript dry-run bridge 추가
+
+Kiwi v7.2 safety:
+  - 실제 microphone 전에 Kiwi OPENCLAW_BIN을 dry-run shim으로 전환
+  - `openclaw agent --message` 형태만 transcript dry-run으로 라우팅
+  - `.debugloop/runs/kiwi-live-dry-run.jsonl`에 ignored runtime 결과 기록
+  - dispatcher, OpenClaw agent, browser, node 실행은 하지 않음
 ```
 
 현재 Node는 `system.run`, `system.run.prepare`, `system.which`, `screen.snapshot`, `camera.list`,
@@ -541,10 +547,8 @@ Repo prep: kiwi_windows_probe.py, kiwi_transcript_dry_run.py, config.yaml.templa
 - `uv pip install -r requirements.txt`로 의존성 설치
 - PyTorch가 필요하면 cu128 index URL을 명시
 - `config.yaml`에 한국어, faster-whisper, text wake word 설정
-- speaker ID owner 등록
-- Telegram approval 설정
-- Gateway v4 호환 Kiwi WebSocket 경로 또는 CLI fallback 유지 여부 결정
-- Kiwi owner voice registration 준비
+- `OPENCLAW_BIN`은 v7.2 전까지 실제 OpenClaw CLI로 두지 않는다.
+- speaker ID owner 등록, Telegram approval, Gateway v4 WebSocket 호환은 v7.2 이후 별도 batch로 둔다.
 
 진행 gate:
 
@@ -553,6 +557,40 @@ python3 scripts/wsl/kiwi_windows_probe.py
 ```
 
 `kiwi_windows_probe.py`가 ready가 아니면 v7.2 마이크/STT/speaker owner 등록으로 넘어가지 않는다.
+
+### v7.2 - Live transcript dry-run adapter
+
+상태:
+
+```text
+목표: Kiwi live STT transcript가 실제 실행 없이 repo dry-run 계약으로만 흐르게 만든다.
+Windows shim: C:\Users\ksg63\projects\kiwi-voice\dry-run-openclaw.cmd
+Repo helper: scripts/win/Invoke-KiwiDryRunOpenClaw.ps1
+Runtime log: .debugloop/runs/kiwi-live-dry-run.jsonl
+```
+
+작업:
+
+- `scripts/win/kiwi-dry-run-openclaw.cmd`와 `Invoke-KiwiDryRunOpenClaw.ps1`을 Kiwi repo에 복사한다.
+- Kiwi `.env`를 timestamp backup 후 `OPENCLAW_BIN=C:\Users\ksg63\projects\kiwi-voice\dry-run-openclaw.cmd`로 바꾼다.
+- `KIWI_WS_ENABLED=false`를 유지한다.
+- shim은 `--version`과 `agent --session-id ... --message ... --timeout ...`만 허용한다.
+- transcript는 WSL repo의 `kiwi_transcript_dry_run.py`로 전달하고 `wouldExecute=false`를 검증한다.
+- unsupported command는 deny로 기록하고 nonzero로 종료한다.
+
+검증:
+
+```bash
+python3 scripts/wsl/kiwi_live_dry_run_probe.py
+python3 scripts/wsl/kiwi_windows_probe.py
+```
+
+완료 조건:
+
+- notify/Codex transcript는 approval preview만 만들고 실행하지 않는다.
+- cancel/critical transcript는 approval request를 만들지 않는다.
+- `.env`의 `OPENCLAW_BIN`이 dry-run shim을 가리킨다.
+- 실제 OpenClaw agent, dispatcher, browser, node command는 호출하지 않는다.
 
 ### Windows 설치 원칙
 
@@ -575,19 +613,19 @@ uv pip install torch torchvision torchaudio --index-url https://download.pytorch
 python -m kiwi
 ```
 
-음성 테스트:
+v7.2 이후 선택적 음성 테스트:
 
 ```text
-오픈클로, 응답 테스트
-오픈클로, 내 목소리 기억해
-오픈클로, 누가 말하고 있어?
+오픈클로, 응답 테스트        -> dry-run JSONL only
+취소                         -> no approval request
+오픈클로, 결제하고 Gmail로 비밀번호 보내 -> critical deny
 ```
 
 ### 완료 조건
 
-- 호출어가 오탐/미탐 없이 실사용 가능한 수준으로 동작한다.
-- owner 음성 등록이 완료된다.
-- 위험 명령은 Telegram 또는 음성 승인 없이는 실행되지 않는다.
+- 호출어와 STT가 dry-run adapter로만 연결된다.
+- owner 음성 등록과 Telegram approval은 아직 완료 조건이 아니다.
+- 위험 명령은 approval request 없이 deny된다.
 - Kiwi는 executor가 아니라 planner 승인 흐름의 입구로 동작한다.
 
 ## v8 - End-to-End 운영 안정화

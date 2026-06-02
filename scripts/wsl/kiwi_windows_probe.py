@@ -10,6 +10,7 @@ from typing import Any, Sequence
 
 DEFAULT_KIWI_PATH = r"C:\Users\ksg63\projects\kiwi-voice"
 DEFAULT_DASHBOARD_URL = "http://127.0.0.1:7789"
+DEFAULT_DRY_RUN_SHIM = DEFAULT_KIWI_PATH + r"\dry-run-openclaw.cmd"
 
 
 def run_powershell(script: str, timeout: int = 30) -> subprocess.CompletedProcess[str]:
@@ -50,6 +51,27 @@ def test_path(path: str) -> bool:
     return completed.stdout.strip().lower() == "true"
 
 
+def read_kiwi_env(kiwi_path: str) -> dict[str, str]:
+    env_path = kiwi_path + r"\.env"
+    script = (
+        "$ErrorActionPreference='Stop'; "
+        f"$path={json.dumps(env_path)}; "
+        "if (-not (Test-Path -LiteralPath $path)) { '{}' } else { "
+        "$items=@{}; "
+        "Get-Content -LiteralPath $path | ForEach-Object { "
+        "$line=$_.Trim(); "
+        "if ($line -and -not $line.StartsWith('#') -and $line.Contains('=')) { "
+        "$parts=$line.Split('=',2); $items[$parts[0].Trim()]=$parts[1].Trim() "
+        "} }; "
+        "$items | ConvertTo-Json -Compress }"
+    )
+    completed = run_powershell(script)
+    if not completed.stdout.strip():
+        return {}
+    data = json.loads(completed.stdout)
+    return data if isinstance(data, dict) else {}
+
+
 def probe_dashboard(url: str) -> dict[str, Any]:
     script = (
         "$ErrorActionPreference='Stop'; "
@@ -79,6 +101,8 @@ def build_report(args: argparse.Namespace) -> dict[str, Any]:
     venv_exists = test_path(args.kiwi_path + r"\venv\Scripts\python.exe")
     config_exists = test_path(args.kiwi_path + r"\config.yaml")
     env_exists = test_path(args.kiwi_path + r"\.env")
+    dry_run_shim_exists = test_path(args.dry_run_shim)
+    kiwi_env = read_kiwi_env(args.kiwi_path) if env_exists else {}
     dashboard = probe_dashboard(args.dashboard_url)
 
     blockers: list[str] = []
@@ -97,6 +121,31 @@ def build_report(args: argparse.Namespace) -> dict[str, Any]:
     elif not venv_exists:
         blockers.append("Kiwi virtual environment is not created")
 
+    openclaw_bin_is_dry_run = kiwi_env.get("OPENCLAW_BIN") == args.dry_run_shim
+    if blockers:
+        next_manual_steps = [
+            "Install FFmpeg and ensure ffmpeg.exe is on PATH if missing.",
+            "Install OpenClaw CLI on Windows if missing.",
+            "Clone Kiwi Voice to the fixed Windows path.",
+            "Run uv venv venv and uv pip install -r requirements.txt from the Kiwi repo.",
+            "Copy .env.example to .env and keep secrets out of this repo.",
+        ]
+    elif dashboard.get("reachable") and openclaw_bin_is_dry_run:
+        next_manual_steps = [
+            "Run python3 scripts/wsl/kiwi_live_dry_run_probe.py before microphone smoke tests.",
+            "Use the Kiwi dashboard microphone only for v7.2 dry-run phrases.",
+        ]
+    elif dashboard.get("reachable"):
+        next_manual_steps = [
+            "Set OPENCLAW_BIN to the dry-run shim before microphone smoke tests.",
+            "Run python3 scripts/wsl/kiwi_live_dry_run_probe.py after updating .env.",
+        ]
+    else:
+        next_manual_steps = [
+            "Run python -m kiwi from the Windows Kiwi repo.",
+            "Open http://127.0.0.1:7789 and verify the dashboard before v7.2 microphone work.",
+        ]
+
     return {
         "status": "blocked" if blockers else "ready",
         "kiwiPath": args.kiwi_path,
@@ -106,23 +155,16 @@ def build_report(args: argparse.Namespace) -> dict[str, Any]:
             "venvPython": venv_exists,
             "configYaml": config_exists,
             "envFile": env_exists,
+            "dryRunShim": dry_run_shim_exists,
+        },
+        "kiwiEnv": {
+            "KIWI_WS_ENABLED": kiwi_env.get("KIWI_WS_ENABLED"),
+            "OPENCLAW_BIN": kiwi_env.get("OPENCLAW_BIN"),
+            "openclawBinIsDryRunShim": openclaw_bin_is_dry_run,
         },
         "dashboard": dashboard,
         "blockers": blockers,
-        "nextManualSteps": (
-            [
-                "Install FFmpeg and ensure ffmpeg.exe is on PATH if missing.",
-                "Install OpenClaw CLI on Windows if missing.",
-                "Clone Kiwi Voice to the fixed Windows path.",
-                "Run uv venv venv and uv pip install -r requirements.txt from the Kiwi repo.",
-                "Copy .env.example to .env and keep secrets out of this repo.",
-            ]
-            if blockers
-            else [
-                "Run python -m kiwi from the Windows Kiwi repo.",
-                "Open http://127.0.0.1:7789 and verify the dashboard before v7.2 microphone work.",
-            ]
-        ),
+        "nextManualSteps": next_manual_steps,
     }
 
 
@@ -130,6 +172,7 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Inspect Windows Kiwi Voice readiness without mutating host state.")
     parser.add_argument("--kiwi-path", default=DEFAULT_KIWI_PATH)
     parser.add_argument("--dashboard-url", default=DEFAULT_DASHBOARD_URL)
+    parser.add_argument("--dry-run-shim", default=DEFAULT_DRY_RUN_SHIM)
     parser.add_argument("--strict", action="store_true", help="Exit non-zero when readiness is blocked.")
     return parser.parse_args(argv)
 

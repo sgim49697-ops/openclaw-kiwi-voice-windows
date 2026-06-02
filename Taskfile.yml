@@ -70,6 +70,11 @@ tasks:
     cmds:
       - 'python3 scripts/wsl/kiwi_transcript_dry_run.py --transcript "{{.TRANSCRIPT | default ""}}" || python scripts/wsl/kiwi_transcript_dry_run.py --transcript "{{.TRANSCRIPT | default ""}}"'
 
+  kiwi:live-dry-run-probe:
+    desc: Verify the Windows Kiwi OpenClaw shim routes live transcripts to dry-run only.
+    cmds:
+      - python3 scripts/wsl/kiwi_live_dry_run_probe.py || python scripts/wsl/kiwi_live_dry_run_probe.py
+
   debug:once:
     desc: Run one read-only debug monitor pass.
     cmds:

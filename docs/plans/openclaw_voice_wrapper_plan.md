@@ -1181,6 +1181,7 @@ task check 통과 또는 task CLI 미설치 시 개별 validator 통과
 - [x] Korean locale 설정
 - [x] wake word `오픈클로` 설정
 - [x] Dashboard 확인
+- [x] v7.2 live transcript dry-run OpenClaw shim 추가
 - [ ] owner voice 등록
 - [ ] Telegram approval 연결
 - [ ] Gateway v4 WebSocket 호환 또는 CLI fallback 유지 결정

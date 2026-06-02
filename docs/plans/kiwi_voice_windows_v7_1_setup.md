@@ -1,6 +1,6 @@
 # Kiwi Voice Windows v7.1 Setup Plan
 
-이 문서는 Windows Kiwi Voice 설치와 repo-local dry-run bridge 연결을 위한 v7.1 기준 절차다.
+이 문서는 Windows Kiwi Voice 설치와 repo-local dry-run bridge 연결을 위한 v7.1-v7.2 기준 절차다.
 
 ## Current Status
 
@@ -12,7 +12,7 @@ Windows tools: uv, python 3.12, git, FFmpeg, OpenClaw CLI available
 Kiwi path: C:\Users\ksg63\projects\kiwi-voice cloned
 Kiwi venv: created with uv
 Dashboard: http://127.0.0.1:7789 reachable
-Blocker: none for v7.1; v7.2 still needs live microphone/owner voice registration
+Blocker: none for v7.1; v7.2 adds a live transcript dry-run OpenClaw shim before microphone work
 ```
 
 v7.1은 Kiwi 설치와 startup 준비까지만 다룬다. Kiwi에서 실제 dispatcher 실행, `system.run`, browser action, Codex execution은 하지 않는다.
@@ -75,7 +75,7 @@ Copy `templates/kiwi/config.yaml.template` into the Kiwi repo as `config.yaml`, 
 
 Current OpenClaw Gateway uses protocol v4 while this Kiwi checkout still has a Gateway v3 WebSocket client. For v7.1, `websocket.enabled=false` and `KIWI_WS_ENABLED=false` are used so Kiwi starts through the Windows OpenClaw CLI fallback. Direct dispatcher execution remains out of scope.
 
-## Dry-run Bridge
+## Transcript Dry-run Bridge
 
 Before using a microphone, test the transcript bridge:
 
@@ -94,6 +94,37 @@ cancel: no approvalRequest
 critical request: deny, no approvalRequest
 ```
 
+## v7.2 Live Dry-run OpenClaw Shim
+
+Before using the dashboard microphone, Kiwi must not call the real Windows OpenClaw CLI.
+Set `OPENCLAW_BIN` in `C:\Users\ksg63\projects\kiwi-voice\.env` to:
+
+```text
+C:\Users\ksg63\projects\kiwi-voice\dry-run-openclaw.cmd
+```
+
+The shim accepts only:
+
+```text
+--version
+agent --session-id <id> --message <transcript> --timeout <seconds>
+```
+
+It forwards the transcript to:
+
+```bash
+python3 scripts/wsl/kiwi_transcript_dry_run.py --transcript "<transcript>"
+```
+
+It appends ignored runtime JSONL to `.debugloop/runs/kiwi-live-dry-run.jsonl` and returns a harmless text
+response to Kiwi. It does not call OpenClaw agent, dispatcher, browser, node, or approval APIs.
+
+Probe:
+
+```bash
+python3 scripts/wsl/kiwi_live_dry_run_probe.py
+```
+
 ## v7.2 Handoff
 
 After v7.1 succeeds:
@@ -102,7 +133,8 @@ After v7.1 succeeds:
 python -m kiwi
 ```
 
-Then use the dashboard at `http://localhost:7789` for microphone, wake word, and owner voice registration. Telegram approval remains unset until a later explicit secrets batch.
+After the v7.2 shim probe passes, use the dashboard at `http://localhost:7789` only for dry-run microphone
+smoke phrases. Owner voice registration and Telegram approval remain unset until later explicit batches.
 
 Known v7.2 notes:
 
