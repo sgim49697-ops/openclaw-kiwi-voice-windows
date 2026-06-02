@@ -60,6 +60,16 @@ tasks:
     cmds:
       - python3 scripts/wsl/voice_e2e_probe.py || python scripts/wsl/voice_e2e_probe.py
 
+  kiwi:windows-probe:
+    desc: Inspect Windows Kiwi Voice readiness without mutating host state.
+    cmds:
+      - python3 scripts/wsl/kiwi_windows_probe.py || python scripts/wsl/kiwi_windows_probe.py
+
+  kiwi:transcript-dry-run:
+    desc: Preview routing for a Kiwi STT transcript without executing actions.
+    cmds:
+      - 'python3 scripts/wsl/kiwi_transcript_dry_run.py --transcript "{{.TRANSCRIPT | default ""}}" || python scripts/wsl/kiwi_transcript_dry_run.py --transcript "{{.TRANSCRIPT | default ""}}"'
+
   debug:once:
     desc: Run one read-only debug monitor pass.
     cmds:

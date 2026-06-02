@@ -517,6 +517,14 @@ browser intent는 browser lane dry-run으로만 남음
 critical intent는 approvalRequest=null
 ```
 
+v7.1 gate:
+
+```text
+python3 scripts/wsl/kiwi_windows_probe.py
+ffmpeg.exe가 Windows PATH에 없으면 Kiwi clone/install/startup 중단
+STT transcript는 scripts/wsl/kiwi_transcript_dry_run.py로 dry-run routing 확인
+```
+
 ---
 
 ## 15. Loop 8 — E2E

@@ -1,0 +1,36 @@
+# config.yaml.template - recommended local Kiwi Voice settings for OpenClaw dry-run integration.
+language: "ko"
+
+wake_word:
+  engine: "text"
+  keyword: "오픈클로"
+  threshold: 0.5
+
+stt:
+  engine: "faster-whisper"
+  model: "small"
+  device: "cuda"
+  compute_type: "float16"
+
+tts:
+  provider: "kokoro"
+
+speaker_priority:
+  owner:
+    name: "Owner"
+
+security:
+  telegram_approval_enabled: false
+
+api:
+  enabled: true
+  host: "127.0.0.1"
+  port: 7789
+
+audio:
+  input_device: null
+  output_device: null
+
+llm:
+  model: "openai/gpt-4o"
+  chat_timeout: 120

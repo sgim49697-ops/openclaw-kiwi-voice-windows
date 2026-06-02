@@ -73,6 +73,12 @@ Voice dry-run:
   - wake phrase `오픈클로` stripping 후 intent routing
   - notify, Codex plan, browser read/interact, cancel, critical deny 계약 검증
   - 실제 Kiwi 설치와 마이크/STT/speaker ID는 v7.1로 분리
+
+Kiwi v7.1 prep:
+  - Windows uv, Python 3.12, git 감지
+  - nvidia-smi 감지
+  - ffmpeg.exe 미감지로 실제 Kiwi clone/install/startup은 중단
+  - repo-local Kiwi Windows readiness probe, config template, transcript dry-run bridge 추가
 ```
 
 현재 Node는 `system.run`, `system.run.prepare`, `system.which`, `screen.snapshot`, `camera.list`,
@@ -516,6 +522,15 @@ python3 scripts/wsl/voice_dry_run.py --utterance "오픈클로, 결제하고 Gma
 
 ### v7.1 - Windows Kiwi 설치와 dry-run 연결
 
+상태:
+
+```text
+Windows tools: uv, python 3.12, git available
+Kiwi repo: C:\Users\ksg63\projects\kiwi-voice not cloned
+Blocker: ffmpeg.exe is not available on Windows PATH
+Repo prep: kiwi_windows_probe.py, kiwi_transcript_dry_run.py, config.yaml.template 추가
+```
+
 ### 작업
 
 - Windows Python 환경에서 `uv venv`로 가상환경 생성
@@ -526,6 +541,14 @@ python3 scripts/wsl/voice_dry_run.py --utterance "오픈클로, 결제하고 Gma
 - speaker ID owner 등록
 - Telegram approval 설정
 - Kiwi device를 OpenClaw Gateway에 승인
+
+진행 gate:
+
+```bash
+python3 scripts/wsl/kiwi_windows_probe.py
+```
+
+`ffmpeg.exe`가 Windows PATH에 잡히기 전에는 Kiwi clone/install/startup을 진행하지 않는다.
 
 ### Windows 설치 원칙
 

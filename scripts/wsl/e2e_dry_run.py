@@ -29,7 +29,7 @@ def now_iso() -> str:
 
 
 def slug_timestamp() -> str:
-    return datetime.now(timezone.utc).astimezone().strftime("%Y%m%d-%H%M%S")
+    return datetime.now(timezone.utc).astimezone().strftime("%Y%m%d-%H%M%S-%f")
 
 
 def payload_hash(payload: dict) -> str:
