@@ -167,6 +167,7 @@ def worktree_status() -> dict:
 def discover_file_categories(files: Sequence[Path]) -> dict[str, list[str]]:
     categories: dict[str, list[str]] = {
         "wslScripts": [],
+        "wslNodeScripts": [],
         "policyFiles": [],
         "schemaFiles": [],
         "evalFiles": [],
@@ -180,6 +181,8 @@ def discover_file_categories(files: Sequence[Path]) -> dict[str, list[str]]:
             continue
         if rel.startswith("scripts/wsl/") and path.suffix == ".py":
             categories["wslScripts"].append(rel)
+        elif rel.startswith("scripts/wsl/") and path.suffix == ".mjs":
+            categories["wslNodeScripts"].append(rel)
         elif rel.startswith("policies/") and path.suffix == ".json":
             categories["policyFiles"].append(rel)
         elif rel.startswith("schemas/") and path.suffix == ".json":
@@ -280,6 +283,16 @@ def base_specs(files: Sequence[Path], include_browser_probe: bool) -> list[Comma
                 name="python:compile:wsl",
                 command=["python3", "-m", "py_compile", *wsl_scripts],
                 timeout=60,
+            )
+        )
+
+    for script in categories["wslNodeScripts"]:
+        specs.append(
+            CommandSpec(
+                name=f"node:check:{script}",
+                command=["node", "--check", script],
+                timeout=30,
+                source="syntax",
             )
         )
 

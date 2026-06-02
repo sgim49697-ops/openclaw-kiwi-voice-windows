@@ -145,6 +145,26 @@ tasks:
     cmds:
       - powershell.exe -NoProfile -Command "wsl -e bash -lc 'cd /home/user/projects/openclaw-kiwi-voice-windows && python3 scripts/wsl/debug_agent.py --once'"
 
+  debug:forever:
+    desc: Run supervised debug cycles until STOP file or Ctrl+C.
+    cmds:
+      - powershell.exe -NoProfile -Command "wsl -e bash -lc 'cd /home/user/projects/openclaw-kiwi-voice-windows && python3 scripts/wsl/debug_forever.py --watch --interval {{.INTERVAL | default 60}} --iterations {{.ITERATIONS | default 0}}'"
+
+  debug:stop:
+    desc: Request the debug forever loop to stop after the current cycle.
+    cmds:
+      - python3 scripts/wsl/debug_forever.py --stop || python scripts/wsl/debug_forever.py --stop
+
+  debug:forever-status:
+    desc: Print the latest debug forever summary.
+    cmds:
+      - python3 scripts/wsl/debug_forever.py --status || python scripts/wsl/debug_forever.py --status
+
+  debug:forever-clear-stop:
+    desc: Clear the debug forever STOP file.
+    cmds:
+      - python3 scripts/wsl/debug_forever.py --clear-stop || python scripts/wsl/debug_forever.py --clear-stop
+
   browser:doctor:
     desc: Print browser lane doctor command without touching host settings.
     cmds:

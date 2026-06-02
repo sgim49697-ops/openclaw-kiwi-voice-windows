@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parents[2]
 QUEUE_ROOT = ROOT / ".debugloop" / "queue"
 APPROVED_DIR = QUEUE_ROOT / "approved"
 DEFAULT_LOG_PATH = ROOT / ".debugloop" / "runs" / "e2e-approved-runs.jsonl"
+EXECUTED_DIR = ROOT / ".debugloop" / "runs" / "e2e-approved-executed"
 DISPATCHER_PATH = r"C:\OpenClawActions\Invoke-OpenClawAction.ps1"
 DISPATCHER_ACTIONS = {
     "notify",
@@ -281,7 +282,17 @@ def append_jsonl(path: Path, record: dict) -> None:
         handle.write(json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n")
 
 
-def run_file(path: Path, dry_run: bool) -> dict:
+def executed_path(request_id: str) -> Path:
+    return EXECUTED_DIR / f"{request_id}.json"
+
+
+def write_executed_record(record: dict) -> None:
+    path = executed_path(record["requestId"])
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(record, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def run_file(path: Path, dry_run: bool, force: bool) -> dict:
     record = {
         "timestamp": now_iso(),
         "mode": "approved_e2e_runner",
@@ -289,6 +300,7 @@ def run_file(path: Path, dry_run: bool) -> dict:
         "requestId": path.stem,
         "status": "blocked",
         "dryRun": dry_run,
+        "skipped": False,
         "action": None,
         "riskTier": None,
         "steps": [],
@@ -300,8 +312,16 @@ def run_file(path: Path, dry_run: bool) -> dict:
         record["requestId"] = request["requestId"]
         record["action"] = request["action"]
         record["riskTier"] = request["riskTier"]
+        already_executed = executed_path(record["requestId"])
+        if already_executed.exists() and not dry_run and not force:
+            record["status"] = "ok"
+            record["skipped"] = True
+            record["skipReason"] = f"already executed: {relative(already_executed)}"
+            return record
         record["steps"] = execute_request(request, dry_run=dry_run)
         record["status"] = "ok" if all(step["status"] in {"ok", "dry_run"} for step in record["steps"]) else "blocked"
+        if record["status"] == "ok" and not dry_run:
+            write_executed_record(record)
     except Exception as exc:
         record["errors"].append(str(exc))
     return record
@@ -311,6 +331,8 @@ def print_record(record: dict) -> None:
     print(f"status: {record['status']}")
     print(f"requestId: {record['requestId']}")
     print(f"action: {record.get('action')}")
+    if record.get("skipped"):
+        print(f"skipped: {record.get('skipReason')}")
     if record.get("errors"):
         for error in record["errors"]:
             print(f"error: {error}")
@@ -326,6 +348,7 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     group.add_argument("--request-id", help="Approved request id to run.")
     group.add_argument("--all", action="store_true", help="Run all approved requests.")
     parser.add_argument("--dry-run", action="store_true", help="Validate and print commands without executing them.")
+    parser.add_argument("--force", action="store_true", help="Re-run an approved request even if it has an executed marker.")
     parser.add_argument("--log-path", type=Path, default=DEFAULT_LOG_PATH)
     return parser.parse_args(argv)
 
@@ -342,7 +365,7 @@ def main(argv: Sequence[str]) -> int:
         print("status: ok\nmessage: no approved requests")
         return 0
 
-    records = [run_file(path, dry_run=args.dry_run) for path in files]
+    records = [run_file(path, dry_run=args.dry_run, force=args.force) for path in files]
     for record in records:
         append_jsonl(args.log_path, record)
         print_record(record)
