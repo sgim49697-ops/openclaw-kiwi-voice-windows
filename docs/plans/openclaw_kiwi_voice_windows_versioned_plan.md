@@ -87,6 +87,13 @@ Kiwi v7.2 safety:
   - `openclaw agent --message` 형태만 transcript dry-run으로 라우팅
   - `.debugloop/runs/kiwi-live-dry-run.jsonl`에 ignored runtime 결과 기록
   - dispatcher, OpenClaw agent, browser, node 실행은 하지 않음
+
+Kiwi v7.2.1 web microphone smoke:
+  - dashboard Web Microphone 연결 성공
+  - `web_audio_clients` 0 → 1 → 0 확인
+  - event log `WEB_CLIENT_CONNECTED` 확인
+  - dry-run shim 로그는 증가하지 않아 STT/wake transcript 미검출로 기록
+  - 다음 단계는 audio level/STT/wake calibration
 ```
 
 현재 Node는 `system.run`, `system.run.prepare`, `system.which`, `screen.snapshot`, `camera.list`,
@@ -591,6 +598,32 @@ python3 scripts/wsl/kiwi_windows_probe.py
 - cancel/critical transcript는 approval request를 만들지 않는다.
 - `.env`의 `OPENCLAW_BIN`이 dry-run shim을 가리킨다.
 - 실제 OpenClaw agent, dispatcher, browser, node command는 호출하지 않는다.
+
+### v7.2.1 - Web Microphone dry-run smoke
+
+상태:
+
+```text
+dashboard: http://127.0.0.1:7789 reachable
+browser profile: windows-cdp dedicated CDP
+Kiwi API before smoke: state=idle, web_audio_clients=0
+Web Microphone UI: Connected - listening
+Kiwi API during smoke: web_audio_clients=1
+Event log: WEB_CLIENT_CONNECTED
+Dry-run JSONL: unchanged, no live transcript event detected
+Cleanup: Web Microphone disconnected, web_audio_clients=0
+```
+
+판정:
+
+- Web Microphone transport는 성공했다.
+- 실제 OpenClaw agent, dispatcher, browser, node command는 호출되지 않았다.
+- STT/wake가 transcript를 만들지 못해 notify/cancel/critical live dry-run route 검증은 미완료다.
+
+다음 작업:
+
+- v7.2.2에서 browser microphone permission, Windows input device, dashboard audio level, STT/VAD/wake threshold를 분리 진단한다.
+- dry-run shim은 유지하고, transcript가 생긴 뒤에만 notify/cancel/critical live smoke를 반복한다.
 
 ### Windows 설치 원칙
 

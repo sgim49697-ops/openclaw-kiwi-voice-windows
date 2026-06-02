@@ -546,6 +546,17 @@ v7.2 probe:
 python3 scripts/wsl/kiwi_live_dry_run_probe.py
 ```
 
+v7.2.1 result:
+
+```text
+Web Microphone connected through the dashboard.
+Kiwi API showed web_audio_clients 0 -> 1.
+Dashboard event log showed WEB_CLIENT_CONNECTED.
+No STT/wake transcript reached the dry-run shim; .debugloop/runs/kiwi-live-dry-run.jsonl stayed unchanged.
+The microphone was disconnected and web_audio_clients returned to 0.
+Next: v7.2.2 audio level / STT / wake calibration while keeping the dry-run shim.
+```
+
 ---
 
 ## 15. Loop 8 — E2E
