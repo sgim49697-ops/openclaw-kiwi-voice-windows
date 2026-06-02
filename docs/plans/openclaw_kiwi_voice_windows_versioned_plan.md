@@ -123,6 +123,13 @@ Kiwi v7.2.4 Windows mic signal fix:
   - Windows native sounddevice probe maxRms 0.000015 on USB Audio Device
   - multi-device native scan found no usable speech-level input
   - live dry-run smoke was not attempted; blocker remains Windows mic hardware/driver/mute/gain/routing
+
+Kiwi v7.2.5 Windows mic signal recovery gate:
+  - preflight still clean: Kiwi ready, dry-run shim enabled, Gateway approvals locked, Windows Node connected
+  - Windows native USB Audio Device retry stayed near-silent: rms 0.000015, peak 0.000031
+  - browser standard probe maxRms 0.000086
+  - browser raw-audio probe maxRms 0.000136
+  - live dry-run smoke was not attempted; continue blocking on Windows input signal until maxRms >= 0.015
 ```
 
 현재 Node는 `system.run`, `system.run.prepare`, `system.which`, `screen.snapshot`, `camera.list`,
@@ -742,6 +749,32 @@ live dispatcher/browser/node execution: not attempted
 - Windows input meter가 발화에 반응하는지 먼저 확인한다.
 - USB mic cable/adapter, mute switch, Windows input volume, driver, privacy permission, default communication device를 점검한다.
 - `kiwi_windows_audio_probe.py`와 `kiwi_browser_mic_level_probe.mjs`가 speech gate를 통과한 뒤 live smoke를 재시도한다.
+
+### v7.2.5 - Windows mic signal recovery gate
+
+상태:
+
+```text
+scope: Windows microphone signal retry only
+OPENCLAW_BIN: dry-run-openclaw.cmd
+KIWI_WS_ENABLED: false
+live dispatcher/browser/node execution: not attempted
+```
+
+결과:
+
+- Kiwi readiness, live dry-run shim probe, Gateway approvals, Windows Node 연결은 모두 정상이다.
+- Windows Sound settings를 다시 열어 input device/volume 확인을 유도했다.
+- Windows native USB Audio Device retry는 `rms=0.000015`, `peak=0.000031`로 여전히 near-silence였다.
+- browser standard probe는 `maxRms=0.000086`, raw-audio probe는 `maxRms=0.000136`이었다.
+- `aboveThresholdCount=0`으로 Kiwi speech gate `0.015`를 통과하지 못했다.
+- live Web Microphone dry-run smoke는 중단했다.
+
+다음:
+
+- Windows input meter가 실제 발화에 강하게 반응하도록 device/gain/mute/driver/routing을 먼저 고친다.
+- browser probe에서 `maxRms >= 0.015` 또는 `aboveThresholdCount > 0`가 나온 뒤 notify/cancel/critical live dry-run smoke를 재시도한다.
+- 그 전에는 owner voice, Telegram approval, Gateway v4 WebSocket compatibility, dispatcher live execution으로 넘어가지 않는다.
 
 ### Windows 설치 원칙
 

@@ -719,6 +719,31 @@ Rerun kiwi_windows_audio_probe.py and kiwi_browser_mic_level_probe.mjs only afte
 Proceed to live notify/cancel/critical dry-run smoke only after maxRms >= 0.015.
 ```
 
+v7.2.5 result:
+
+```text
+Preflight:
+  - repo started clean
+  - Kiwi ready and dashboard reachable
+  - OPENCLAW_BIN remains C:\Users\ksg63\projects\kiwi-voice\dry-run-openclaw.cmd
+  - KIWI_WS_ENABLED=false
+  - Gateway approvals remain security=allowlist, ask=always, askFallback=deny, autoAllowSkills=off
+  - Windows Node remains paired/connected
+
+Signal retry:
+  - Windows Sound settings was opened again for manual input device/gain check
+  - Windows native USB Audio Device capture rms: 0.000015, peak: 0.000031
+  - windows-cdp dashboard tab was reachable on Chrome CDP port 9222
+  - browser standard probe maxRms: 0.000086
+  - browser raw-audio probe maxRms: 0.000136
+  - aboveThresholdCount remained 0 for both browser probes
+
+Decision:
+  - live Web Microphone dry-run smoke was not attempted because the RMS gate did not pass.
+  - blocker remains Windows microphone hardware/driver/mute/gain/routing.
+  - do not move to owner voice, Telegram approval, Gateway v4 WebSocket compatibility, or dispatcher live execution until browser maxRms >= 0.015.
+```
+
 ---
 
 ## 15. Loop 8 — E2E
