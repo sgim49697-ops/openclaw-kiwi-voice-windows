@@ -95,6 +95,26 @@ tasks:
     cmds:
       - python3 scripts/wsl/kiwi_live_dry_run_probe.py || python scripts/wsl/kiwi_live_dry_run_probe.py
 
+  kiwi:runtime-capture:
+    desc: Restart Windows Kiwi with stdout/stderr captured to ignored artifacts.
+    cmds:
+      - python3 scripts/wsl/kiwi_runtime_capture.py start || python scripts/wsl/kiwi_runtime_capture.py start
+
+  kiwi:runtime-tail:
+    desc: Print filtered Kiwi runtime log lines from the latest capture artifact.
+    cmds:
+      - python3 scripts/wsl/kiwi_runtime_capture.py tail || python scripts/wsl/kiwi_runtime_capture.py tail
+
+  kiwi:audio-ws-probe:
+    desc: Send silence/tone PCM to Kiwi WebAudioBridge without executing actions.
+    cmds:
+      - node scripts/wsl/kiwi_audio_ws_probe.mjs
+
+  kiwi:mic-level-probe:
+    desc: Measure dashboard browser microphone RMS/peak through CDP.
+    cmds:
+      - node scripts/wsl/kiwi_browser_mic_level_probe.mjs
+
   debug:once:
     desc: Run one read-only debug monitor pass.
     cmds:

@@ -94,6 +94,17 @@ Kiwi v7.2.1 web microphone smoke:
   - event log `WEB_CLIENT_CONNECTED` 확인
   - dry-run shim 로그는 증가하지 않아 STT/wake transcript 미검출로 기록
   - 다음 단계는 audio level/STT/wake calibration
+
+Kiwi v7.2.2 audio/STT/wake calibration:
+  - dry-run shim과 `KIWI_WS_ENABLED=false`는 그대로 유지
+  - Windows Kiwi stdout/stderr capture helper 추가
+  - browser microphone RMS/peak 측정 helper 추가
+  - `/api/audio` synthetic silence/tone PCM probe 추가
+  - transcript 생성 전 실패를 browser input gain, WebAudioBridge gate, STT/wake 단계로 분리
+  - local Kiwi checkout backup 후 Silero trust prompt와 Whisper language=ru hardcode를 보정
+  - synthetic tone은 Speech segment → PROCESS → WHISPER까지 도달, detected language=ko 확인
+  - browser mic permission은 granted지만 maxRms 0.000129로 speech gate 0.015 미만
+  - 다음은 Windows input device/gain 보정 후 live transcript dry-run 재시도
 ```
 
 현재 Node는 `system.run`, `system.run.prepare`, `system.which`, `screen.snapshot`, `camera.list`,
@@ -624,6 +635,42 @@ Cleanup: Web Microphone disconnected, web_audio_clients=0
 
 - v7.2.2에서 browser microphone permission, Windows input device, dashboard audio level, STT/VAD/wake threshold를 분리 진단한다.
 - dry-run shim은 유지하고, transcript가 생긴 뒤에만 notify/cancel/critical live smoke를 반복한다.
+
+### v7.2.2 - Audio level / STT / wake calibration
+
+상태:
+
+```text
+scope: diagnostics only
+OPENCLAW_BIN: dry-run-openclaw.cmd
+KIWI_WS_ENABLED: false
+runtime artifacts: .debugloop/artifacts/kiwi, .debugloop/runs
+local Kiwi backup: C:\Users\ksg63\projects\kiwi-voice\.codex-backups\v7.2.2-20260602-152419
+```
+
+작업:
+
+- `kiwi_runtime_capture.py`로 Windows Kiwi를 로그 캡처 모드로 재시작한다.
+- `kiwi_audio_ws_probe.mjs`로 `/api/audio`에 silence/tone PCM을 넣어 WebAudioBridge speech gate를 확인한다.
+- `kiwi_browser_mic_level_probe.mjs`로 dashboard tab의 실제 microphone RMS/peak를 측정한다.
+- 로그에서 `WEB_AUDIO`, `Speech segment`, `External audio submitted`, `PROCESS`, `WHISPER`, `WAKE`, `OPENCLAW`만 추적한다.
+- 실제 OpenClaw agent, dispatcher, browser, node action 흔적이 있으면 즉시 중단한다.
+- local Kiwi source의 Silero `torch.hub.load` prompt는 `trust_repo=True`로 제거한다.
+- Whisper `language="ru"` hardcode는 config language 기반으로 보정한다.
+
+판정:
+
+- synthetic tone이 segment를 만들고 실제 mic가 못 만들면 Windows/browser input gain 문제로 둔다.
+- segment는 생기지만 STT가 실패하면 local Kiwi checkout을 backup한 뒤 config language 기반 STT 보정만 검토한다.
+- transcript가 dry-run shim에 도달한 뒤에만 notify/cancel/critical live smoke를 재시도한다.
+
+결과:
+
+- silence probe는 speech segment 없이 통과했다.
+- tone probe는 `WEB_AUDIO Speech segment`, `External audio submitted`, `PROCESS`, `WHISPER`까지 도달했다.
+- Whisper detected language는 `ko`, probability `1.00`이었다.
+- browser mic probe는 permission `granted`였지만 maxRms `0.000129`로 gate `0.015` 미만이었다.
+- 현 blocker는 Kiwi code path가 아니라 Windows/browser microphone input level 또는 speaking-window 재측정이다.
 
 ### Windows 설치 원칙
 

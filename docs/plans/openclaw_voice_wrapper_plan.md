@@ -1183,6 +1183,7 @@ task check 통과 또는 task CLI 미설치 시 개별 validator 통과
 - [x] Dashboard 확인
 - [x] v7.2 live transcript dry-run OpenClaw shim 추가
 - [~] v7.2.1 Web Microphone 연결 smoke: connected, transcript 미검출
+- [~] v7.2.2 Audio/STT/wake calibration helper 추가, mic RMS 미달 확인
 - [ ] owner voice 등록
 - [ ] Telegram approval 연결
 - [ ] Gateway v4 WebSocket 호환 또는 CLI fallback 유지 결정
@@ -1260,6 +1261,28 @@ assistant: 이 요청은 파일 삭제를 포함한 critical 위험 작업이라
 - Windows Node exec-policy 확인
 - Kiwi Voice 로그 확인
 - C:\OpenClawActions\logs\actions.jsonl 확인
+```
+
+v7.2.2 진단 체크:
+
+```text
+- OPENCLAW_BIN이 dry-run shim인지 확인
+- KIWI_WS_ENABLED=false 유지
+- Windows Kiwi stdout/stderr capture artifact 확인
+- browser mic RMS/peak가 Kiwi speech gate 0.015를 넘는지 확인
+- /api/audio synthetic silence/tone probe로 WebAudioBridge segment 생성 여부 확인
+- transcript가 실제로 생기기 전에는 live notify/cancel/critical smoke를 반복하지 않음
+```
+
+v7.2.2 결과:
+
+```text
+- synthetic tone: Speech segment → External audio submitted → PROCESS → WHISPER 도달
+- Whisper detected language: ko
+- Silero trust prompt와 Whisper language hardcode는 local Kiwi checkout backup 후 보정
+- browser microphone permission: granted
+- browser microphone maxRms: 0.000129 < speech gate 0.015
+- 다음 gate: Windows input device/gain 또는 speaking-window 재측정 후 transcript가 dry-run shim에 도달하는지 확인
 ```
 
 정책 변경 전:

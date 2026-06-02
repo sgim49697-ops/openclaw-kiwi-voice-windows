@@ -566,6 +566,76 @@ The microphone was disconnected and web_audio_clients returned to 0.
 Next: v7.2.2 audio level / STT / wake calibration while keeping the dry-run shim.
 ```
 
+v7.2.2 audio level / STT / wake calibration:
+
+```text
+목표:
+  transcript 이전 실패를 browser microphone level, WebAudioBridge VAD gate, STT/wake 단계로 분리한다.
+
+유지 조건:
+  OPENCLAW_BIN=C:\Users\ksg63\projects\kiwi-voice\dry-run-openclaw.cmd
+  KIWI_WS_ENABLED=false
+  dispatcher, real OpenClaw agent, browser action, node action 실행 금지
+
+repo helper:
+  scripts/wsl/kiwi_runtime_capture.py
+    - Windows Kiwi를 같은 .env로 재시작하고 stdout/stderr를 ignored artifact에 캡처한다.
+    - WEB_AUDIO, Speech segment, External audio submitted, PROCESS, WHISPER, WAKE, OPENCLAW 라인만 tail할 수 있다.
+
+  scripts/wsl/kiwi_audio_ws_probe.mjs
+    - /api/audio WebSocket에 silence/tone PCM을 직접 보내 WebAudioBridge segment 생성을 확인한다.
+    - silence는 speech segment를 만들지 않아야 하고, tone은 평균 진폭이 0.015 gate를 넘도록 보낸다.
+
+  scripts/wsl/kiwi_browser_mic_level_probe.mjs
+    - windows-cdp dashboard tab에서 getUserMedia RMS/peak를 측정한다.
+    - 실제 발화 RMS가 Kiwi speech gate 0.015를 넘는지 판단한다.
+```
+
+판정:
+
+```text
+- mic RMS가 0.015 미만이면 Windows input gain/device/browser permission 문제로 둔다.
+- synthetic tone은 Speech segment를 만들지만 실제 mic가 못 만들면 browser/device/gain 문제로 둔다.
+- Speech segment와 External audio submitted가 생기는데 STT가 실패하면 local Kiwi checkout을 backup 후 language="ru" hardcode 보정 후보로 본다.
+- transcript가 dry-run shim에 도달한 뒤에만 notify/cancel/critical live smoke를 재시도한다.
+```
+
+v7.2.2 result:
+
+```text
+Runtime capture:
+  - scripts/wsl/kiwi_runtime_capture.py start/tail OK
+  - Kiwi stdout/stderr captured under .debugloop/artifacts/kiwi/
+
+Synthetic /api/audio:
+  - silence probe OK, no speech segment expected
+  - sequence tone probe OK
+  - log showed WEB_AUDIO Speech segment and External audio submitted
+  - after local patch, log reached PROCESS and WHISPER
+  - Whisper detected language ko with probability 1.00
+  - tone was filtered as hallucination, which is acceptable for synthetic non-speech
+
+Local Kiwi patch:
+  - backup: C:\Users\ksg63\projects\kiwi-voice\.codex-backups\v7.2.2-20260602-152419
+  - unified_vad.py and listener.py torch.hub.load use trust_repo=True to avoid unattended Silero prompt
+  - listener.py Whisper language now uses config language, so current ko config is honored
+
+Browser mic level:
+  - dashboard microphone permission: granted
+  - measured maxRms: 0.000129
+  - measured maxPeak: 0.000519
+  - Kiwi speech gate: 0.015
+  - current measured input is far below the Kiwi WebAudioBridge speech gate
+```
+
+v7.2.2 next action:
+
+```text
+Windows microphone input device/gain must be corrected or re-tested with a confirmed speaking window.
+After browser mic RMS exceeds 0.015, repeat live notify/cancel/critical smoke.
+Do not move to owner voice, Telegram approval, or Gateway v4 WebSocket compatibility until transcript reaches the dry-run shim.
+```
+
 ---
 
 ## 15. Loop 8 — E2E
