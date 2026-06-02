@@ -113,7 +113,7 @@ browser page-level CDP가 timeout이면 `browser_cdp_recovery.py`가 isolated `o
 
 `debug:agent`는 autoloop 결과를 입력으로 받아 L2 repair marker가 있는 실패만 자동 수정 대상으로 처리한다. `# debug-autoloop: command=...` marker는 read-only check 전용이며, 자동 수정은 같은 파일의 check marker 실패와 `# debug-agent: repair=python3 <same-file> --repair --confirm-safe-l2` marker가 동시에 있을 때만 실행된다. 수정 허용 경로는 `docs/`, `policies/`, `schemas/`, `tests/`, `evals/`, `scripts/wsl/`로 제한한다.
 
-`debug:forever`는 `debug_agent.py --once`를 cycle 단위로 호출하는 supervisor다. 작업트리가 dirty이면 자동으로 `--dry-run`을 붙여 repo-local 수정/커밋을 막고, clean이면 기존 L2 repair/commit 정책을 따른다. `.debugloop/STOP`이 있거나 Ctrl+C가 들어오면 현재 cycle 종료 후 멈춘다. 중복 실행은 `.debugloop/runs/forever.lock`으로 거부하고, 상태는 `.debugloop/runs/forever.jsonl`과 `.debugloop/runs/latest-forever-summary.md`에 기록한다.
+`debug:forever`는 `debug_agent.py --once`를 cycle 단위로 호출하는 supervisor다. 작업트리가 dirty이면 자동으로 `--dry-run`을 붙여 repo-local 수정/커밋을 막고, clean이면 기존 L2 repair/commit 정책을 따른다. `.debugloop/STOP`이 있거나 Ctrl+C가 들어오면 현재 cycle 종료 후 멈춘다. 중복 실행은 `.debugloop/runs/forever.lock`으로 거부하고, 상태는 `.debugloop/runs/forever.jsonl`과 `.debugloop/runs/latest-forever-summary.md`에 기록한다. CDP recovery는 `debug_agent.py --cycle-index <forever-cycle>`로 outer cycle 번호를 받아 `--once` 재호출마다 cycle 1로 오인하지 않는다.
 
 ---
 

@@ -149,6 +149,8 @@ def agent_command(args: argparse.Namespace, *, dry_run: bool, monitor_only: bool
         "--once",
         "--probe-every",
         str(args.probe_every),
+        "--cycle-index",
+        str(cycle),
         "--cdp-recovery-max-failures",
         str(args.cdp_recovery_max_failures),
     ]

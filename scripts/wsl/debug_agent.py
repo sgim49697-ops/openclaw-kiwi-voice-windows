@@ -481,6 +481,7 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     mode.add_argument("--watch", action="store_true", help="Run repeated agent cycles.")
     parser.add_argument("--interval", type=float, default=60.0, help="Seconds between watch cycles.")
     parser.add_argument("--iterations", type=int, default=0, help="Watch iterations; 0 means forever.")
+    parser.add_argument("--cycle-index", type=int, help="External supervisor cycle number for --once mode.")
     parser.add_argument("--dry-run", action="store_true", help="Classify and print candidate repairs without running them.")
     parser.add_argument("--include-slow", action="store_true", help="Always include slow autoloop probes.")
     parser.add_argument("--probe-every", type=int, default=3, help="Run browser probe every N blocked cycles.")
@@ -495,6 +496,13 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
 
 def main(argv: Sequence[str]) -> int:
     args = parse_args(argv)
+    if args.cycle_index is not None and args.cycle_index <= 0:
+        print("--cycle-index must be positive", file=sys.stderr)
+        return 2
+    if args.cycle_index is not None and args.watch:
+        print("--cycle-index is only supported with --once", file=sys.stderr)
+        return 2
+
     watch = args.watch
     iterations = args.iterations if watch else 1
     count = 0
@@ -502,7 +510,8 @@ def main(argv: Sequence[str]) -> int:
 
     while True:
         count += 1
-        record = run_agent_cycle(args, count)
+        cycle_index = args.cycle_index if args.cycle_index is not None else count
+        record = run_agent_cycle(args, cycle_index)
         append_jsonl(args.log_path, record)
         write_summary(args.summary_path, record)
         print_record(record)
