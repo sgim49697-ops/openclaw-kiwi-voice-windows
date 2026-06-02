@@ -55,6 +55,11 @@ tasks:
     cmds:
       - 'python3 scripts/wsl/voice_dry_run.py --utterance "{{.INTENT | default ""}}" || python scripts/wsl/voice_dry_run.py --utterance "{{.INTENT | default ""}}"'
 
+  voice:e2e-probe:
+    desc: Verify v7 voice dry-run routing contract without executing actions.
+    cmds:
+      - python3 scripts/wsl/voice_e2e_probe.py || python scripts/wsl/voice_e2e_probe.py
+
   debug:once:
     desc: Run one read-only debug monitor pass.
     cmds:

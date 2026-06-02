@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[2]
 PENDING_DIR = ROOT / ".debugloop" / "queue" / "pending"
 DEFAULT_PROJECT_PATH = r"\\wsl.localhost\Ubuntu-22.04\home\user\projects\openclaw-kiwi-voice-windows"
 DEFAULT_BROWSER_PROFILE = "windows-cdp"
+WAKE_PHRASES = ("오픈클로", "오픈 클로", "openclaw", "open claw")
 DISPATCHER_ACTIONS = {
     "notify",
     "open_url_readonly",
@@ -34,6 +35,17 @@ def slug_timestamp() -> str:
 def payload_hash(payload: dict) -> str:
     canonical = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return "sha256:" + hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def normalize_intent(intent: str) -> str:
+    normalized = intent.strip()
+    lowered = normalized.lower()
+    for phrase in WAKE_PHRASES:
+        phrase_lower = phrase.lower()
+        if lowered.startswith(phrase_lower):
+            normalized = normalized[len(phrase) :].lstrip(" ,，.。:：-")
+            break
+    return " ".join(normalized.split())
 
 
 def approval_request(
@@ -69,14 +81,33 @@ def approval_request(
 
 
 def classify_intent(intent: str, project_path: str) -> dict:
-    normalized = intent.strip()
+    normalized = normalize_intent(intent)
     lowered = normalized.lower()
+
+    if normalized in {"취소", "중지", "그만"} or any(
+        marker in normalized for marker in ("실행하지 마", "하지마", "하지 마")
+    ):
+        return {
+            "lane": "control",
+            "riskTier": "low",
+            "approvalRequired": False,
+            "mustDeny": False,
+            "reason": "Voice cancel request; no execution or approval request.",
+            "action": "cancel",
+            "params": {"utterance": normalized},
+        }
 
     critical_markers = [
         "삭제",
         "결제",
-        "보내",
         "gmail",
+        "메일",
+        "이메일",
+        "문자",
+        "메시지",
+        "카톡",
+        "비밀번호",
+        "패스워드",
         "password",
         "otp",
         "powershell",
@@ -98,6 +129,31 @@ def classify_intent(intent: str, project_path: str) -> dict:
             "params": {},
         }
 
+    if any(marker in normalized for marker in ("테스트 알림", "알림 테스트", "응답 테스트")):
+        return {
+            "lane": "windows_wrapper",
+            "riskTier": "low",
+            "approvalRequired": True,
+            "mustDeny": False,
+            "reason": "Create a dry-run notification approval request.",
+            "action": "notify",
+            "params": {
+                "title": "OpenClaw voice dry-run",
+                "body": normalized,
+            },
+        }
+
+    if "보내" in normalized or "send" in lowered:
+        return {
+            "lane": "deny",
+            "riskTier": "critical",
+            "approvalRequired": False,
+            "mustDeny": True,
+            "reason": "send/post style requests must not be queued by voice dry-run",
+            "action": None,
+            "params": {},
+        }
+
     if "codex" in lowered or "코덱스" in normalized or "플랜" in normalized or "계획" in normalized:
         params = {
             "projectPath": project_path,
@@ -115,7 +171,8 @@ def classify_intent(intent: str, project_path: str) -> dict:
 
     browser_markers = ("브라우저", "크롬", "검색창", "검색", "결과", "browser")
     if any(marker in normalized for marker in browser_markers) or "browser" in lowered:
-        browser_action = "browser_interact" if any(word in normalized for word in ("클릭", "입력", "검색", "열어")) else "browser_read"
+        interact_markers = ("클릭", "입력", "검색", "검색창", "검색어", "select", "fill", "채워", "선택", "타이핑")
+        browser_action = "browser_interact" if any(word in normalized for word in interact_markers) else "browser_read"
         return {
             "lane": "browser",
             "riskTier": "medium" if browser_action == "browser_interact" else "low",
@@ -143,6 +200,7 @@ def build_preview(args: argparse.Namespace) -> dict:
     preview = {
         "mode": args.mode,
         "intent": args.intent,
+        "normalizedIntent": normalize_intent(args.intent),
         "route": route,
         "wouldExecute": False,
         "approvalRequest": None,

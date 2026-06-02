@@ -492,20 +492,30 @@ Node가 `system.run`, `camera.list`, `location.get`, `screen.snapshot`, `browser
 
 목표: 마이크/STT/호출어/목소리 인식/승인 문구가 실제 실행 없이 동작하는지 확인한다.
 
+v7.0은 실제 Kiwi 설치 전에 repo-local voice dry-run 계약을 먼저 고정한다.
+
 권장 순서:
 
 ```text
-1. Kiwi 실행
-2. wake word 인식
-3. STT 결과 로그 확인
-4. speaker ID 확인
-5. intent classifier dry-run
-6. 실행 계획 읽기
-7. "취소" / "실행" 구분 확인
-8. approval request 생성까지만 확인
+1. text/voice dry-run script로 utterance normalization 확인
+2. wake phrase `오픈클로` 제거 확인
+3. notify / Codex plan / browser read / browser interact routing 확인
+4. "취소" / "실행" 구분 확인
+5. critical deny가 approval request를 만들지 않는지 확인
+6. approval request 생성까지만 확인
+7. v7.1에서 Kiwi 실행, wake word, STT, speaker ID 실기 확인
 ```
 
 위험 action은 음성 단독 승인으로 통과하지 않는다. medium 이상은 Telegram 또는 manual 승인 신호를 요구한다.
+
+v7.0 통과 기준:
+
+```text
+python3 scripts/wsl/voice_e2e_probe.py 통과
+notify/Codex plan은 wouldExecute=false + approvalRequest 생성
+browser intent는 browser lane dry-run으로만 남음
+critical intent는 approvalRequest=null
+```
 
 ---
 

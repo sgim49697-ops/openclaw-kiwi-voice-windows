@@ -830,16 +830,16 @@ approval:
 사용자 음성 예시:
 
 ```text
-오픈클로, VS Code에서 C:\dev\shop 열고 Codex 플랜모드로 결제 오류 수정 계획 세워줘.
+오픈클로, Codex로 현재 프로젝트 다음 계획 세워줘.
 ```
 
 planner가 사용자에게 보여줄 확인문:
 
 ```text
 다음 작업을 실행하려고 합니다.
-1. VS Code에서 C:\dev\shop 열기
+1. VS Code WSL remote에서 현재 프로젝트 열기
 2. Codex를 read-only sandbox로 시작
-3. /plan 지시로 결제 오류 수정 계획만 작성
+3. /plan 지시로 다음 구현 계획만 작성
 4. 파일 수정과 명령 실행은 하지 않음
 실행할까요?
 ```
@@ -1174,6 +1174,7 @@ task check 통과 또는 task CLI 미설치 시 개별 validator 통과
 
 ### Phase 6 — Kiwi Voice 연결
 
+- [x] v7.0 voice dry-run contract 정리
 - [ ] Kiwi Voice 설치
 - [ ] Korean locale 설정
 - [ ] wake word `오픈클로` 설정
@@ -1184,6 +1185,7 @@ task check 통과 또는 task CLI 미설치 시 개별 validator 통과
 완료 기준:
 
 ```text
+voice_e2e_probe.py로 notify/Codex/browser/cancel/critical deny dry-run 통과
 “오픈클로, 테스트 알림 보내줘” → 계획 → 확인 → 알림
 “취소” → 실행 안 됨
 타인 목소리 medium/high 실행 차단

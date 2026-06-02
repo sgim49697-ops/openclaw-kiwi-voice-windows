@@ -745,16 +745,16 @@ sandbox_mode = "read-only"
 사용자:
 
 ```text
-오픈클로, VS Code에서 C:\dev\shop 열고 Codex 플랜모드로 결제 오류 수정 계획 세워줘.
+오픈클로, Codex로 현재 프로젝트 다음 계획 세워줘.
 ```
 
 Kiwi / planner:
 
 ```text
 다음 작업을 실행하려고 합니다.
-1. VS Code에서 C:\dev\shop 열기
+1. VS Code WSL remote에서 현재 프로젝트 열기
 2. Codex를 read-only sandbox로 실행
-3. /plan 모드로 결제 오류 수정 계획만 작성
+3. /plan 모드로 다음 구현 계획만 작성
 4. 파일 수정과 명령 실행은 하지 않음
 실행할까요?
 ```
@@ -769,9 +769,8 @@ Kiwi / planner:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass `
-  -File C:\OpenClawActions\Open-VSCodeCodexPlan.ps1 `
-  -ProjectPath "C:\dev\shop" `
-  -Task "결제 오류 수정 계획 세워줘"
+  -File C:\OpenClawActions\Invoke-OpenClawAction.ps1 `
+  -RequestJsonBase64 "<open_vscode_codex_plan request>"
 ```
 
 ### 브라우저 예시 — click/type/screenshot/page reading 포함
