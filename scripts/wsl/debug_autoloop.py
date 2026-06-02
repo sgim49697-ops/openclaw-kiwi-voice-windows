@@ -359,6 +359,16 @@ def base_specs(files: Sequence[Path], include_browser_probe: bool) -> list[Comma
                 )
             )
 
+    if (ROOT / "scripts/wsl/kiwi_live_dry_run_probe.py").exists():
+        specs.append(
+            CommandSpec(
+                name="kiwi:live-dry-run",
+                command=["python3", "scripts/wsl/kiwi_live_dry_run_probe.py"],
+                timeout=300,
+                source="kiwi-host-dry-run",
+            )
+        )
+
     if (ROOT / "scripts/wsl/debug_monitor.py").exists():
         specs.append(
             CommandSpec(
@@ -390,6 +400,17 @@ def should_run_browser_probe(cycle_index: int, probe_every: int, results: Sequen
         return False
     browser_blocked = "- browser: blocked" in monitor.output or "browser live check unavailable" in monitor.output
     return browser_blocked and (cycle_index == 1 or cycle_index % probe_every == 0)
+
+
+def should_run_cdp_recovery(args: argparse.Namespace, results: Sequence[CommandResult]) -> bool:
+    if getattr(args, "no_cdp_recovery", False):
+        return False
+    if not (ROOT / "scripts/wsl/browser_cdp_recovery.py").exists():
+        return False
+    monitor = next((result for result in results if result.spec.name == "debug:monitor"), None)
+    if monitor is None:
+        return False
+    return "- browser: blocked" in monitor.output or "browser live check unavailable" in monitor.output
 
 
 def dedupe_specs(specs: Sequence[CommandSpec]) -> list[CommandSpec]:
@@ -431,6 +452,24 @@ def run_cycle(args: argparse.Namespace, cycle_index: int) -> dict:
             source="blocked-browser",
         )
         results.append(run_command(probe))
+
+    if should_run_cdp_recovery(args, results):
+        recovery = CommandSpec(
+            name="browser:cdp-recovery",
+            command=[
+                "python3",
+                "scripts/wsl/browser_cdp_recovery.py",
+                "--cycle",
+                str(cycle_index),
+                "--max-failures",
+                str(args.cdp_recovery_max_failures),
+            ],
+            timeout=300,
+            slow=True,
+            required=False,
+            source="blocked-browser",
+        )
+        results.append(run_command(recovery))
 
     return {
         "timestamp": now_iso(),
@@ -495,6 +534,8 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser.add_argument("--iterations", type=int, default=0, help="Watch iterations; 0 means forever.")
     parser.add_argument("--include-slow", action="store_true", help="Always include slow probes.")
     parser.add_argument("--probe-every", type=int, default=3, help="Run browser probe every N blocked cycles.")
+    parser.add_argument("--no-cdp-recovery", action="store_true", help="Do not auto-restart the isolated browser on page-level CDP stalls.")
+    parser.add_argument("--cdp-recovery-max-failures", type=int, default=3, help="Stop CDP auto-restart after N consecutive failed recoveries.")
     parser.add_argument("--log-path", type=Path, default=DEFAULT_LOG_PATH, help="JSONL autoloop log path.")
     parser.add_argument("--summary-path", type=Path, default=DEFAULT_SUMMARY_PATH, help="Latest markdown summary path.")
     return parser.parse_args(argv)

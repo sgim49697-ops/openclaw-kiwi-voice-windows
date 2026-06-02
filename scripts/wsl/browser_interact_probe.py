@@ -26,7 +26,7 @@ ROOT = Path(__file__).resolve().parents[2]
 FIXTURE_PATH = ROOT / "tests" / "browser" / "fixtures" / "interact-smoke.html"
 DEFAULT_LOG_PATH = ROOT / ".debugloop" / "runs" / "latest.jsonl"
 ARTIFACT_DIR = ROOT / ".debugloop" / "artifacts" / "browser"
-DEFAULT_PROFILE = "windows-cdp"
+DEFAULT_PROFILE = "openclaw"
 
 HIGH_IMPACT_COMMANDS = {"submit", "send", "upload", "download", "payment", "purchase", "delete"}
 
@@ -227,6 +227,8 @@ def cdp_ready(url: str = "http://127.0.0.1:9222/json/version", timeout: float = 
 
 
 def ensure_windows_cdp(args: argparse.Namespace, checks: list[dict]) -> None:
+    if args.profile != "windows-cdp":
+        return
     if args.no_ensure_cdp or cdp_ready():
         return
 

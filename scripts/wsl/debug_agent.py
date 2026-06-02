@@ -213,8 +213,10 @@ def classify_blocked_result(result: dict, repairable_paths: set[str]) -> str:
         if path_text in repairable_paths:
             return "repairable_l2"
         return "manual_required"
-    if name in {"debug:monitor", "browser:probe", "browser:probe:on_blocked"}:
+    if name in {"debug:monitor", "browser:probe", "browser:probe:on_blocked", "browser:cdp-recovery"}:
         return "external_blocked"
+    if name == "kiwi:live-dry-run":
+        return "manual_required"
     if name in {"approval:status"} and result.get("status") == "warning":
         return "manual_required"
     if name.startswith("intent:") and result.get("status") != "ok":
@@ -385,7 +387,12 @@ def summarize_agent_status(
 def run_agent_cycle(args: argparse.Namespace, cycle_index: int) -> dict:
     protected = tracked_dirty_files()
     start_clean = not protected and not changed_files()
-    autoloop_args = argparse.Namespace(include_slow=args.include_slow, probe_every=args.probe_every)
+    autoloop_args = argparse.Namespace(
+        include_slow=args.include_slow,
+        probe_every=args.probe_every,
+        no_cdp_recovery=args.no_cdp_recovery,
+        cdp_recovery_max_failures=args.cdp_recovery_max_failures,
+    )
     autoloop_record = autoloop.run_cycle(autoloop_args, cycle_index)
     files = autoloop.tracked_and_untracked_files()
     repair_specs, ignored_repairs = discover_repair_markers(files)
@@ -477,6 +484,8 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser.add_argument("--dry-run", action="store_true", help="Classify and print candidate repairs without running them.")
     parser.add_argument("--include-slow", action="store_true", help="Always include slow autoloop probes.")
     parser.add_argument("--probe-every", type=int, default=3, help="Run browser probe every N blocked cycles.")
+    parser.add_argument("--no-cdp-recovery", action="store_true", help="Do not auto-restart the isolated browser on page-level CDP stalls.")
+    parser.add_argument("--cdp-recovery-max-failures", type=int, default=3, help="Stop CDP auto-restart after N consecutive failed recoveries.")
     parser.add_argument("--no-commit", action="store_true", help="Do not commit verified L2 repair changes.")
     parser.add_argument("--commit-message", default=DEFAULT_COMMIT_MESSAGE, help="Git commit message for verified L2 repairs.")
     parser.add_argument("--log-path", type=Path, default=DEFAULT_LOG_PATH, help="JSONL agent log path.")

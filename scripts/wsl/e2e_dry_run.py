@@ -13,7 +13,8 @@ from typing import Sequence
 ROOT = Path(__file__).resolve().parents[2]
 PENDING_DIR = ROOT / ".debugloop" / "queue" / "pending"
 DEFAULT_PROJECT_PATH = r"\\wsl.localhost\Ubuntu-22.04\home\user\projects\openclaw-kiwi-voice-windows"
-DEFAULT_BROWSER_PROFILE = "windows-cdp"
+DEFAULT_BROWSER_PROFILE = "openclaw"
+DEFAULT_BROWSER_URL = "https://example.com"
 WAKE_PHRASES = ("오픈클로", "오픈 클로", "openclaw", "open claw")
 DISPATCHER_ACTIONS = {
     "notify",
@@ -21,6 +22,10 @@ DISPATCHER_ACTIONS = {
     "open_vscode_codex_plan",
     "open_app_allowlisted",
     "run_task_recipe",
+}
+BROWSER_ACTIONS = {
+    "browser_read",
+    "browser_interact",
 }
 
 
@@ -178,9 +183,13 @@ def classify_intent(intent: str, project_path: str) -> dict:
             "riskTier": "medium" if browser_action == "browser_interact" else "low",
             "approvalRequired": True,
             "mustDeny": False,
-            "reason": "Browser lane dry-run only; browser approvals are not dispatcher payloads.",
+            "reason": "Create a browser-lane approval request for the isolated OpenClaw profile.",
             "action": browser_action,
-            "params": {"utterance": normalized, "profile": DEFAULT_BROWSER_PROFILE},
+            "params": {
+                "utterance": normalized,
+                "profile": DEFAULT_BROWSER_PROFILE,
+                "url": DEFAULT_BROWSER_URL,
+            },
         }
 
     return {
@@ -207,7 +216,7 @@ def build_preview(args: argparse.Namespace) -> dict:
     }
 
     action = route.get("action")
-    if route["approvalRequired"] and action in DISPATCHER_ACTIONS and not route["mustDeny"]:
+    if route["approvalRequired"] and action in DISPATCHER_ACTIONS | BROWSER_ACTIONS and not route["mustDeny"]:
         preview["approvalRequest"] = approval_request(
             request_id=request_id,
             source=f"{args.mode}-dry-run",

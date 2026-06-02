@@ -34,7 +34,7 @@ CASES: tuple[dict[str, Any], ...] = (
         "lane": "browser",
         "riskTier": "low",
         "action": "browser_read",
-        "approvalRequest": False,
+        "approvalRequest": True,
     },
     {
         "id": "browser_interact",
@@ -42,7 +42,7 @@ CASES: tuple[dict[str, Any], ...] = (
         "lane": "browser",
         "riskTier": "medium",
         "action": "browser_interact",
-        "approvalRequest": False,
+        "approvalRequest": True,
     },
     {
         "id": "cancel",

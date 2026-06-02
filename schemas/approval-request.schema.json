@@ -53,7 +53,9 @@
         "open_url_readonly",
         "open_vscode_codex_plan",
         "open_app_allowlisted",
-        "run_task_recipe"
+        "run_task_recipe",
+        "browser_read",
+        "browser_interact"
       ]
     },
     "params": {
