@@ -1190,6 +1190,7 @@ task check 통과 또는 task CLI 미설치 시 개별 validator 통과
 - [~] v7.2.6 Windows audio device audit: 전체 input scan에서도 RMS 미달
 - [~] v7.2.7 Known-good mic recovery: browser mic gate 통과, transcript 미도달
 - [x] v7.2.8 WebAudioBridge segment buffering fix: 1초 이상 segment 생성 확인
+- [~] v7.2.9 Whisper/STT filter tuning: Korean transcript 생성, wake phrase 미보존으로 dry-run shim 미도달
 - [ ] owner voice 등록
 - [ ] Telegram approval 연결
 - [ ] Gateway v4 WebSocket 호환 또는 CLI fallback 유지 결정
@@ -1372,6 +1373,26 @@ v7.2.8 결과:
 - dry-run JSONL은 130줄 그대로, 실제 dispatcher/OpenClaw 실행 없음
 - web_audio_clients=0 복귀
 - 다음 gate: Whisper hallucination/STT threshold/prompt 튜닝 후 transcript dry-run 재시도
+```
+
+v7.2.9 결과:
+
+```text
+- Windows Kiwi local checkout backup:
+  C:\Users\ksg63\projects\kiwi-voice\backups\openclaw-kiwi-voice-windows\v7.2.9-20260603-000808
+- local config_loader.py에 stt.whisper_* tuning fields 추가
+- local service.py가 config language와 Whisper tuning 값을 ListenerConfig로 전달
+- local listener.py가 no_speech/avg_logprob/timestamp reject helper를 사용
+- local config.yaml에 Korean Whisper prompt/threshold values 추가
+- tests\test_config.py tests\test_smoke.py tests\test_listener_whisper_filter.py: 23 passed
+- browser mic scan: USB mic maxRms=0.018282, aboveThresholdCount=1
+- Web Microphone live segments: 1.2s-3.1s
+- Whisper detected language ko, transcript 생성 확인
+- live transcript examples: "응답 테스트.", "테스트 알림 보내줘."
+- wake phrase "오픈클로"가 보존되지 않아 Kiwi가 wake-word-required idle mode에 머물렀고 dry-run shim에는 도달하지 않음
+- 실제 dispatcher/OpenClaw agent/browser/node 실행 없음
+- web_audio_clients=0 복귀
+- 다음 gate: wake phrase/STT prompt calibration 후 live notify/cancel/critical dry-run 재시도
 ```
 
 정책 변경 전:

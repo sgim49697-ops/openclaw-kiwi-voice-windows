@@ -156,6 +156,17 @@ Kiwi v7.2.8 WebAudioBridge buffering fix:
   - synthetic WebAudio produced a 2.0s segment; dashboard Web Microphone produced a 1.7s segment
   - dry-run JSONL did not increase and no real OpenClaw/dispatcher action executed
   - next blocker is Whisper hallucination/STT tuning, not WebAudio segment length
+
+Kiwi v7.2.9 Whisper/STT filter tuning:
+  - local Kiwi checkout was backed up at C:\Users\ksg63\projects\kiwi-voice\backups\openclaw-kiwi-voice-windows\v7.2.9-20260603-000808
+  - config_loader.py/listener.py/service.py now carry config-based Whisper no_speech, avg_logprob, timestamp, and prompt tuning
+  - tests\test_config.py tests\test_smoke.py tests\test_listener_whisper_filter.py passed 23 tests
+  - browser mic scan passed with USB mic maxRms 0.018282, aboveThresholdCount 1
+  - WebAudio produced 1.2s-3.1s live segments and Whisper produced Korean transcript
+  - one segment recognized "테스트 알림 보내줘.", but the wake phrase "오픈클로" was not preserved
+  - live transcript did not reach the dry-run shim because Kiwi remained in wake-word-required idle mode
+  - no dispatcher/OpenClaw real agent/browser/node action executed
+  - next blocker is wake phrase/STT prompt calibration, not WebAudio duration or basic Korean STT
 ```
 
 현재 Node는 `system.run`, `system.run.prepare`, `system.which`, `screen.snapshot`, `camera.list`,
@@ -894,6 +905,42 @@ OpenClaw approvals / dispatcher / Node policy: unchanged
 
 - v7.2.9에서 Whisper hallucination filter, timestamp hallucination, Korean prompt/threshold를 조정한다.
 - notify/cancel/critical live smoke는 transcript가 dry-run shim에 도달한 뒤 재시도한다.
+
+### v7.2.9 - Whisper/STT filter tuning
+
+상태:
+
+```text
+scope: local Windows Kiwi Whisper/STT filtering only
+OPENCLAW_BIN: dry-run-openclaw.cmd
+KIWI_WS_ENABLED: false
+OpenClaw approvals / dispatcher / Node policy: unchanged
+```
+
+구현:
+
+- Windows Kiwi checkout을 timestamp backup 후 수정했다.
+- `config_loader.py`는 `stt.whisper_*` tuning 값을 읽는다.
+- `service.py`는 config language와 Whisper filter tuning 값을 `ListenerConfig`로 전달한다.
+- `listener.py`는 segment reject helper로 no_speech, avg_logprob, timestamp overrun을 판정한다.
+- local `config.yaml`에는 Korean prompt/threshold 값을 추가했다.
+- `tests/test_listener_whisper_filter.py`에 segment filter unit test를 추가했다.
+
+검증:
+
+- `py_compile` 통과: `kiwi\listener.py`, `kiwi\config_loader.py`, `kiwi\service.py`
+- `tests\test_config.py`, `tests\test_smoke.py`, `tests\test_listener_whisper_filter.py`: 23 passed
+- browser mic scan: USB mic `maxRms=0.018282`, `aboveThresholdCount=1`
+- dashboard Web Microphone: `Speech segment` 1.2s-3.1s, detected language `ko`
+- live STT: repeated `"응답 테스트."`, one segment `"테스트 알림 보내줘."`
+- live command did not reach dry-run shim because the wake phrase `"오픈클로"` was not preserved.
+- 종료 후 `web_audio_clients=0`으로 복귀했다.
+
+다음:
+
+- v7.2.10에서 prompt hallucination을 줄이고 wake phrase 보존을 우선 조정한다.
+- 후보: initial prompt를 wake-only로 축소, wake phrase typo/autocorrect 강화, two-step wake-only then command smoke, 필요 시 `medium` model/backend 비교.
+- notify/cancel/critical live smoke는 wake phrase 또는 dialog-mode command가 dry-run shim에 도달한 뒤 재시도한다.
 
 ### Windows 설치 원칙
 

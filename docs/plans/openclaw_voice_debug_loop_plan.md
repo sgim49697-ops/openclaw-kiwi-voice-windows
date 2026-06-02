@@ -857,6 +857,47 @@ Decision:
   - next blocker is Whisper/STT tuning or prompt/threshold calibration, not WebAudioBridge minimum duration.
 ```
 
+v7.2.9 result:
+
+```text
+Scope:
+  - Windows Kiwi local checkout Whisper/STT filtering only
+  - OpenClaw approvals, dispatcher, Node policy, Gateway v4, Telegram, owner voice were not changed
+
+Local Kiwi patch:
+  - backup: C:\Users\ksg63\projects\kiwi-voice\backups\openclaw-kiwi-voice-windows\v7.2.9-20260603-000808
+  - config_loader.py now reads stt whisper filter tuning fields:
+    whisper_no_speech_threshold, whisper_avg_logprob_min,
+    whisper_timestamp_slack_seconds, whisper_timestamp_multiplier,
+    whisper_initial_prompt
+  - service.py passes config language and Whisper filter tuning into ListenerConfig
+  - listener.py uses config language for Whisper and routes segment rejection through a helper
+  - local config.yaml added Korean STT filter/prompt values
+  - tests\test_listener_whisper_filter.py covers no_speech, avg_logprob, and timestamp rejection
+
+Validation:
+  - Windows Kiwi py_compile passed for listener.py, config_loader.py, service.py
+  - tests\test_config.py tests\test_smoke.py tests\test_listener_whisper_filter.py: 23 passed
+  - Kiwi restarted through kiwi_runtime_capture; OPENCLAW_BIN remained dry-run-openclaw.cmd
+  - browser mic scan passed with USB mic maxRms 0.018282 and aboveThresholdCount 1
+
+Runtime:
+  - Web Microphone connected and later disconnected cleanly
+  - WebAudio produced 1.2s-3.1s speech segments, so WebAudioBridge buffering remains fixed
+  - Whisper detected language ko with probability 1.00
+  - repeated low-confidence output was "응답 테스트."
+  - one live segment recognized "테스트 알림 보내줘.", but the wake phrase "오픈클로" was not preserved
+  - live transcript did not reach the dry-run shim because Kiwi stayed in wake-word-required idle mode
+  - .debugloop/runs/kiwi-live-dry-run.jsonl increases observed during the batch came from dry-run probe patterns, not live microphone commands
+  - no dispatcher/OpenClaw real agent/browser/node action executed
+  - web_audio_clients returned to 0
+
+Decision:
+  - v7.2.9 STT filter tuning is applied and validated.
+  - live microphone now reaches Korean Whisper transcript, but wake phrase preservation is still blocked.
+  - next blocker is wake phrase/STT prompt calibration: reduce prompt hallucination, preserve "오픈클로", and retry notify/cancel/critical only after the wake phrase or dialog-mode command reaches the dry-run shim.
+```
+
 ---
 
 ## 15. Loop 8 — E2E
