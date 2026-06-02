@@ -60,6 +60,14 @@ Browser:
   - windows-cdp profile click/type/fill/select interact smoke 성공
   - browser.defaultProfile: windows-cdp
   - browser.ssrfPolicy.allowedHostnames: 127.0.0.1, localhost
+
+Codex plan:
+  - 현재 repo는 WSL UNC 경로에 있으며 Windows Git은 UNC repo를 dubious ownership으로 거부
+  - v6 route는 Windows Codex UNC 직접 실행이 아니라 VS Code WSL remote + WSL Codex read-only plan
+  - 허용 project root: \\wsl.localhost\Ubuntu-22.04\home\user\projects\openclaw-kiwi-voice-windows
+  - C:\OpenClawActions dispatcher v6 배포본 해시 일치 확인
+  - open_vscode_codex_plan positive smoke 성공
+  - outside-root, payloadHash mismatch, missing approval negative smoke 성공
 ```
 
 현재 Node는 `system.run`, `system.run.prepare`, `system.which`, `screen.snapshot`, `camera.list`,
@@ -67,6 +75,7 @@ Browser:
 보지는 않지만, 이후 voice/agent/browser 자동화와 결합되면 실행 범위가 넓어질 수 있다.
 
 따라서 v4 Browser read와 v5 Browser interact는 Windows dedicated Chrome remote CDP fallback으로 통과 상태로 본다.
+v6 VS Code + Codex plan wrapper는 WSL remote read-only route로 통과 상태로 본다.
 local managed `openclaw` profile의 wrapper timeout은 별도 추적하되, 기본 Browser lane은 `windows-cdp`를 사용한다.
 Kiwi Voice는 Browser/Codex/dispatcher 권한 경계가 확인된 뒤 마지막에 통합한다.
 
@@ -433,24 +442,37 @@ OpenClaw browser refs는 최신 snapshot에 묶이므로 같은 profile의 tab/s
 ### 작업
 
 - `Invoke-OpenClawAction.ps1`의 `open_vscode_codex_plan` action 구현
-- 허용 프로젝트 루트 제한
-- `code -r`로 VS Code 열기
-- Codex CLI를 read-only sandbox와 approval on-request로 실행
-- Codex CLI 버전에 맞게 옵션 확인
+- 허용 프로젝트 루트에 현재 WSL repo UNC 경로 추가
+- WSL UNC project는 `code --remote wsl+Ubuntu-22.04 -r /home/user/projects/openclaw-kiwi-voice-windows`로 열기
+- Codex CLI는 `wt.exe`에서 `wsl.exe -d Ubuntu-22.04 --cd <project> -- /home/user/.npm-global/bin/codex`로 실행
+- Codex CLI를 read-only sandbox와 approval on-request로 고정
+- Windows Codex를 UNC repo에 직접 붙이는 fallback은 사용하지 않기
 
 ### 검증
 
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass `
-  -File C:\OpenClawActions\Invoke-OpenClawAction.ps1 `
-  -RequestJsonBase64 "<open_vscode_codex_plan request>"
+```bash
+python3 scripts/wsl/codex_plan_probe.py --case positive --dispatcher deployed --execute
+python3 scripts/wsl/codex_plan_probe.py --case outside-root --dispatcher deployed --execute
+python3 scripts/wsl/codex_plan_probe.py --case hash-mismatch --dispatcher deployed --execute
+python3 scripts/wsl/codex_plan_probe.py --case missing-approval --dispatcher deployed --execute
 ```
 
 ### 완료 조건
 
 - 허용 루트 밖의 프로젝트 경로는 거부된다.
-- Codex가 파일을 수정하지 않고 계획만 작성한다.
+- VS Code가 WSL remote로 현재 repo를 연다.
+- Codex가 WSL repo에서 파일을 수정하지 않고 read-only 계획만 작성한다.
 - workspace-write 전환은 별도 승인 절차로만 가능하다.
+
+### 결과 - 2026-06-02
+
+```text
+positive: deployed dispatcher → VS Code WSL remote + WSL Codex read-only plan 시작 성공
+negative: C:\Windows outside-root 거부 성공
+negative: payloadHash mismatch 거부 성공
+negative: approvedByUser=false 거부 성공
+approvals: allowlist + ask=always + askFallback=deny + autoAllowSkills=off 유지
+```
 
 ## v7 - Kiwi Voice 통합
 
@@ -553,6 +575,6 @@ python -m kiwi
 2. v2에서는 `system.run` 없이 Node 연결만 확인한다.
 3. v3에서 wrapper와 approval 경계를 통과시킨 뒤에만 실행 자동화를 연다.
 4. v4, v5로 브라우저를 read와 interact로 나눠 검증한다.
-5. v6에서 Codex plan wrapper를 붙인다.
+5. v6 Codex plan wrapper는 WSL remote read-only route로 완료 상태를 유지한다.
 6. v7에서 Kiwi Voice를 마지막으로 통합한다.
 7. v8에서 실제 음성 시나리오와 롤백을 검증한다.

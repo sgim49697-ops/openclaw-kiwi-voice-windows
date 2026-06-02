@@ -9,8 +9,11 @@ $ErrorActionPreference = "Stop"
 
 $AllowedRoots = @(
   "C:\dev",
-  "D:\work"
+  "D:\work",
+  "\\wsl.localhost\Ubuntu-22.04\home\user\projects\openclaw-kiwi-voice-windows"
 )
+
+$WslCodexPath = "/home/user/.npm-global/bin/codex"
 
 $AllowedApps = @{
   "vscode" = "code.cmd"
@@ -294,16 +297,73 @@ function Assert-AllowedPath {
   )
 
   $resolved = Resolve-Path -LiteralPath $Path -ErrorAction Stop
-  $fullPath = $resolved.Path
+  $fullPath = if (-not [string]::IsNullOrWhiteSpace($resolved.ProviderPath)) {
+    $resolved.ProviderPath
+  } else {
+    $resolved.Path
+  }
 
   foreach ($root in $AllowedRoots) {
-    $rootFullPath = [IO.Path]::GetFullPath($root)
-    if ($fullPath.StartsWith($rootFullPath, [StringComparison]::OrdinalIgnoreCase)) {
+    $rootFullPath = [IO.Path]::GetFullPath($root).TrimEnd("\", "/")
+    $candidate = [IO.Path]::GetFullPath($fullPath)
+    if ($candidate.Equals($rootFullPath, [StringComparison]::OrdinalIgnoreCase)) {
+      return $fullPath
+    }
+
+    $prefixedRoot = "$rootFullPath\"
+    if ($candidate.StartsWith($prefixedRoot, [StringComparison]::OrdinalIgnoreCase)) {
       return $fullPath
     }
   }
 
   throw "Path is outside allowed roots: $fullPath"
+}
+
+function ConvertFrom-WslUncPath {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Path
+  )
+
+  if ($Path -match '^\\\\(?:wsl\.localhost|wsl\$)\\([^\\]+)\\(.+)$') {
+    $distro = $Matches[1]
+    $linuxPath = "/" + ($Matches[2] -replace "\\", "/")
+    return [pscustomobject]@{
+      IsWsl = $true
+      Distro = $distro
+      LinuxPath = $linuxPath
+    }
+  }
+
+  return [pscustomobject]@{
+    IsWsl = $false
+    Distro = $null
+    LinuxPath = $null
+  }
+}
+
+function Assert-CommandAvailable {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Name
+  )
+
+  if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
+    throw "Required command is unavailable: $Name"
+  }
+}
+
+function Assert-WslCodexAvailable {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Distro
+  )
+
+  Assert-CommandAvailable "wsl.exe"
+  & wsl.exe -d $Distro -- /usr/bin/test -x $WslCodexPath
+  if ($LASTEXITCODE -ne 0) {
+    throw "WSL Codex executable is unavailable: $WslCodexPath"
+  }
 }
 
 function Assert-SafeUrl {
@@ -391,8 +451,6 @@ function Invoke-VSCodeCodexPlanAction {
     throw "Task length invalid."
   }
 
-  code -r $projectPath
-
   $prompt = @"
 /plan $task
 
@@ -403,10 +461,59 @@ Rules:
 - Summarize the plan first and wait for confirmation.
 "@
 
-  codex -C $projectPath `
-    --sandbox read-only `
-    --ask-for-approval on-request `
-    $prompt
+  Assert-CommandAvailable "code"
+  Assert-CommandAvailable "wt.exe"
+
+  $wslProject = ConvertFrom-WslUncPath $projectPath
+  if ($wslProject.IsWsl) {
+    Assert-WslCodexAvailable $wslProject.Distro
+
+    & code --remote "wsl+$($wslProject.Distro)" -r $wslProject.LinuxPath
+    if ($LASTEXITCODE -ne 0) {
+      throw "VS Code WSL remote launch failed."
+    }
+
+    Start-Process -FilePath "wt.exe" -ArgumentList @(
+      "new-tab",
+      "--title",
+      "Codex Read-Only Plan",
+      "wsl.exe",
+      "-d",
+      $wslProject.Distro,
+      "--cd",
+      $wslProject.LinuxPath,
+      "--",
+      $WslCodexPath,
+      "-C",
+      $wslProject.LinuxPath,
+      "--sandbox",
+      "read-only",
+      "--ask-for-approval",
+      "on-request",
+      $prompt
+    )
+  } else {
+    Assert-CommandAvailable "codex"
+
+    & code -r $projectPath
+    if ($LASTEXITCODE -ne 0) {
+      throw "VS Code launch failed."
+    }
+
+    Start-Process -FilePath "wt.exe" -ArgumentList @(
+      "new-tab",
+      "--title",
+      "Codex Read-Only Plan",
+      "codex",
+      "-C",
+      $projectPath,
+      "--sandbox",
+      "read-only",
+      "--ask-for-approval",
+      "on-request",
+      $prompt
+    )
+  }
 
   Write-ActionLog $Request "ok" "codex read-only plan started"
 }

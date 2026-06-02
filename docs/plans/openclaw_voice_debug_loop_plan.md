@@ -433,8 +433,13 @@ voice/text intent
 → approval request 생성
 → 외부 승인
 → dispatcher action: open_vscode_codex_plan
-→ codex -C <project> --sandbox read-only --ask-for-approval on-request
+→ VS Code WSL remote로 project 열기
+→ WSL Codex: codex -C <project> --sandbox read-only --ask-for-approval on-request
 ```
+
+현재 기본 project root는 `\\wsl.localhost\Ubuntu-22.04\home\user\projects\openclaw-kiwi-voice-windows`다.
+Windows Git은 이 UNC repo를 dubious ownership으로 거부하므로 Windows Codex를 UNC에 직접 붙이지 않는다.
+dispatcher는 WSL UNC path를 감지하면 `wsl.exe -d Ubuntu-22.04 --cd <project>` 안에서 `/home/user/.npm-global/bin/codex`를 실행한다.
 
 통과 기준:
 
@@ -444,6 +449,16 @@ voice/text intent
 - 명령 실행 없음
 - plan 결과만 생성
 - workspace-write 전환은 별도 승인 필요
+- C:\Windows 같은 allowed root 밖 path 거부
+- payloadHash mismatch와 missing approval 거부
+```
+
+2026-06-02 v6 smoke:
+
+```text
+deployed dispatcher positive → ok
+outside-root / payloadHash mismatch / missing approval → denied
+Gateway approvals locked 유지
 ```
 
 ---

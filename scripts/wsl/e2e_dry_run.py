@@ -12,6 +12,8 @@ from typing import Sequence
 
 ROOT = Path(__file__).resolve().parents[2]
 PENDING_DIR = ROOT / ".debugloop" / "queue" / "pending"
+DEFAULT_PROJECT_PATH = r"\\wsl.localhost\Ubuntu-22.04\home\user\projects\openclaw-kiwi-voice-windows"
+DEFAULT_BROWSER_PROFILE = "windows-cdp"
 DISPATCHER_ACTIONS = {
     "notify",
     "open_url_readonly",
@@ -121,7 +123,7 @@ def classify_intent(intent: str, project_path: str) -> dict:
             "mustDeny": False,
             "reason": "Browser lane dry-run only; browser approvals are not dispatcher payloads.",
             "action": browser_action,
-            "params": {"utterance": normalized, "profile": "openclaw"},
+            "params": {"utterance": normalized, "profile": DEFAULT_BROWSER_PROFILE},
         }
 
     return {
@@ -175,7 +177,7 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Preview OpenClaw text/voice intent routing without execution.")
     parser.add_argument("--intent", required=True, help="Text intent or voice utterance to preview.")
     parser.add_argument("--mode", choices=("text", "voice"), default="text")
-    parser.add_argument("--project-path", default="C:\\dev\\shop", help="Project path for Codex plan previews.")
+    parser.add_argument("--project-path", default=DEFAULT_PROJECT_PATH, help="Project path for Codex plan previews.")
     parser.add_argument("--request-id", help="Stable request id for approval request previews.")
     parser.add_argument("--write-approval", action="store_true", help="Write a pending dispatcher approval request.")
     return parser.parse_args(argv)

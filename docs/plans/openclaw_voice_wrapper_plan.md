@@ -1139,18 +1139,22 @@ password/payment/delete/send는 strong confirmation 또는 deny
 
 - [x] `open_vscode_codex_plan` action 구현
 - [x] allowed project root 설정
+- [x] WSL repo는 VS Code WSL remote + WSL Codex read-only route로 실행
 - [x] Codex read-only + on-request 고정
 - [x] `/plan` prompt 고정
-- [ ] Windows 환경에서 파일 수정 금지 확인
+- [x] Windows 환경에서 파일 수정 금지 확인
 
 완료 기준:
 
 ```text
-C:\dev 아래 project 열기 성공
-Codex plan 시작 성공
+\\wsl.localhost\Ubuntu-22.04\home\user\projects\openclaw-kiwi-voice-windows project 열기 성공
+VS Code WSL remote 열기 성공
+WSL Codex read-only plan 시작 성공
 C:\Windows 등 허용 root 밖 경로 거부
 Codex danger-full-access 사용 불가
 ```
+
+2026-06-02 v6 smoke에서 deployed dispatcher positive 실행과 outside-root, payloadHash mismatch, missing approval negative cases를 확인했다.
 
 ### Phase 5 — Harness 추가
 
@@ -1220,7 +1224,7 @@ assistant: 격리 브라우저 프로필에서 검색하고 페이지를 읽어 
 ### 22.2 VS Code + Codex plan
 
 ```text
-사용자: 오픈클로, VS Code에서 C:\dev\shop 열고 Codex 플랜모드로 결제 오류 수정 계획 세워줘.
+사용자: 오픈클로, VS Code에서 현재 WSL 프로젝트 열고 Codex 플랜모드로 다음 구현 계획 세워줘.
 assistant: VS Code를 열고 Codex를 read-only plan으로 시작하겠습니다. 파일 수정은 하지 않습니다. 실행할까요?
 사용자: 실행.
 결과: windows wrapper lane → open_vscode_codex_plan
