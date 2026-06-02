@@ -1188,6 +1188,7 @@ task check 통과 또는 task CLI 미설치 시 개별 validator 통과
 - [~] v7.2.4 Windows native mic signal probe: native/browser 모두 RMS 미달
 - [~] v7.2.5 Windows mic signal recovery gate: 재측정 후에도 RMS 미달
 - [~] v7.2.6 Windows audio device audit: 전체 input scan에서도 RMS 미달
+- [~] v7.2.7 Known-good mic recovery: browser mic gate 통과, transcript 미도달
 - [ ] owner voice 등록
 - [ ] Telegram approval 연결
 - [ ] Gateway v4 WebSocket 호환 또는 CLI fallback 유지 결정
@@ -1338,6 +1339,20 @@ v7.2.6 결과:
 - aboveThresholdCount: 0
 - live dry-run smoke는 중단
 - 다음 gate: Windows mic physical signal 복구 후 scan 재통과
+```
+
+v7.2.7 결과:
+
+```text
+- native scan timeout/path handling 보정
+- native best device: USB Audio Device index 1
+- native best rms: 0.006402, peak: 0.654480
+- browser best input: communications - 마이크(USB Audio Device) (0c76:160a)
+- browser best maxRms: 0.047101, maxPeak: 0.395349, aboveThresholdCount: 2
+- Web Microphone 연결 및 종료 확인, web_audio_clients=0 복귀
+- dry-run JSONL은 증가하지 않음
+- Kiwi WebAudio speech segment가 대부분 0.2s-0.3s라 Whisper가 Audio too short로 skip
+- 다음 gate: WebAudioBridge segment buffering/minimum duration 보정 후 live smoke 재시도
 ```
 
 정책 변경 전:

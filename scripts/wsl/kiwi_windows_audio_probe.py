@@ -250,13 +250,15 @@ def main(argv: Sequence[str]) -> int:
         print("--channels must be positive", file=sys.stderr)
         return 2
 
-    args.worker.parent.mkdir(parents=True, exist_ok=True)
-    args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.worker.write_text(WORKER_SOURCE.lstrip(), encoding="utf-8")
+    worker_file = args.worker.resolve()
+    out_file = args.out.resolve()
+    worker_file.parent.mkdir(parents=True, exist_ok=True)
+    out_file.parent.mkdir(parents=True, exist_ok=True)
+    worker_file.write_text(WORKER_SOURCE.lstrip(), encoding="utf-8")
 
     python_path = args.kiwi_path + r"\venv\Scripts\python.exe"
-    worker_path = wsl_path_to_windows(args.worker)
-    out_path = wsl_path_to_windows(args.out)
+    worker_path = wsl_path_to_windows(worker_file)
+    out_path = wsl_path_to_windows(out_file)
     command = (
         "$python=" + ps_literal(python_path) + "; "
         "$worker=" + ps_literal(worker_path) + "; "
@@ -276,7 +278,12 @@ def main(argv: Sequence[str]) -> int:
         command += "--scan-all "
     command += "--out $out"
 
-    completed = run_powershell(command, timeout=max(20, int(args.duration_ms / 1000) + 20))
+    timeout_seconds = max(20, int(args.duration_ms / 1000) + 20)
+    if args.scan_all:
+        # The exact input count is discovered inside the Windows worker, so use
+        # a conservative host timeout for the largest observed local device set.
+        timeout_seconds = max(90, int(args.per_device_ms / 1000) * 16 + 30)
+    completed = run_powershell(command, timeout=timeout_seconds)
     print(completed.stdout.strip())
     if completed.stderr.strip():
         print(completed.stderr.strip(), file=sys.stderr)

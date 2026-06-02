@@ -137,6 +137,14 @@ Kiwi v7.2.6 Windows audio device audit:
   - browser best input default USB mic maxRms 0.000161, maxPeak 0.000636
   - no native/browser input reached minRms 0.015
   - live dry-run smoke remains blocked on Windows mic hardware/driver/gain/routing
+
+Kiwi v7.2.7 known-good mic recovery:
+  - fixed native scan timeout/path handling for 5s per-device scans
+  - native best USB mic improved to rms 0.006402, peak 0.654480 but stayed below minRms 0.015
+  - browser scan passed with communications USB mic maxRms 0.047101, aboveThresholdCount 2
+  - Web Microphone connected and returned to web_audio_clients=0 after smoke
+  - dry-run shim log did not increase; Kiwi split live speech into mostly 0.2s-0.3s segments that Whisper skipped as too short
+  - next blocker is WebAudioBridge segment buffering/minimum duration, not basic mic signal
 ```
 
 현재 Node는 `system.run`, `system.run.prepare`, `system.which`, `screen.snapshot`, `camera.list`,
@@ -811,6 +819,36 @@ live dispatcher/browser/node execution: not attempted
 
 - Windows input meter가 실제 발화에 충분히 반응할 때까지 physical mic, cable/adapter, mute switch, gain, privacy permission, driver, routing을 먼저 고친다.
 - scan에서 gate를 통과한 device index/deviceId가 생긴 뒤 v7.2.7 live dry-run smoke를 진행한다.
+
+### v7.2.7 - Known-good mic recovery and live dry-run smoke gate
+
+상태:
+
+```text
+scope: microphone signal gate + live dry-run smoke only
+OPENCLAW_BIN: dry-run-openclaw.cmd
+KIWI_WS_ENABLED: false
+live dispatcher/browser/node execution: not attempted
+```
+
+구현:
+
+- `kiwi_windows_audio_probe.py`의 scan host timeout과 Windows output path 처리를 보정했다.
+
+결과:
+
+- native scan은 끝까지 완료되었고 best device는 USB Audio Device index `1`이었다.
+- native best는 `rms=0.006402`, `peak=0.654480`으로 개선되었지만 minRms `0.015`에는 못 미쳤다.
+- browser scan은 `communications - 마이크(USB Audio Device) (0c76:160a)`가 best였고 `maxRms=0.047101`, `aboveThresholdCount=2`로 gate를 통과했다.
+- dashboard Web Microphone을 연결해 live dry-run smoke를 시도했지만 `.debugloop/runs/kiwi-live-dry-run.jsonl`은 증가하지 않았다.
+- Kiwi log는 WebAudio speech segment를 만들었지만 대부분 `0.2s-0.3s`로 잘려 Whisper가 `Audio too short`로 건너뛰었다.
+- 하나의 `1.4s` segment는 Whisper까지 갔지만 hallucination으로 skip되어 transcript가 dry-run shim에 도달하지 않았다.
+- Web Microphone은 종료 후 `web_audio_clients=0`으로 복귀했다.
+
+다음:
+
+- v7.2.8에서 WebAudioBridge의 segment buffering/minimum duration을 보정한다.
+- live notify/cancel/critical smoke는 transcript가 dry-run shim에 도달한 뒤 재시도한다.
 
 ### Windows 설치 원칙
 

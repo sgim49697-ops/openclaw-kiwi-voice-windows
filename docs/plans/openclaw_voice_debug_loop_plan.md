@@ -779,6 +779,43 @@ Decision:
   - next step is outside the automation path: replace/repair mic, change physical input, driver, gain, or routing until Windows/browser scan passes.
 ```
 
+v7.2.7 result:
+
+```text
+Implementation:
+  - kiwi_windows_audio_probe.py host timeout/path handling was fixed so --scan-all can finish with 5s per device.
+
+Preflight:
+  - repo started clean
+  - Kiwi ready and dashboard reachable
+  - OPENCLAW_BIN remains C:\Users\ksg63\projects\kiwi-voice\dry-run-openclaw.cmd
+  - KIWI_WS_ENABLED=false
+  - Gateway approvals remain security=allowlist, ask=always, askFallback=deny, autoAllowSkills=off
+  - Windows Node remains paired/connected
+
+Signal gate:
+  - native scan completed with best device index 1, USB Audio Device
+  - native best rms: 0.006402, peak: 0.654480
+  - native scan improved but stayed below minRms 0.015
+  - browser scan passed
+  - best browser candidate: communications - 마이크(USB Audio Device) (0c76:160a)
+  - best browser maxRms: 0.047101, maxPeak: 0.395349, aboveThresholdCount: 2
+
+Live dry-run smoke:
+  - Web Microphone was connected and later disconnected cleanly
+  - web_audio_clients returned to 0
+  - dry-run JSONL line count stayed at 85
+  - no dispatcher/OpenClaw agent/browser/node action executed
+  - Kiwi emitted repeated WebAudio speech segments but most were 0.2s-0.3s
+  - Whisper skipped most segments as Audio too short (< 0.4s)
+  - one 1.4s segment reached Whisper, but transcription was skipped as likely hallucination
+
+Decision:
+  - Windows/browser microphone signal gate is now partially recovered.
+  - live transcript did not reach the dry-run shim.
+  - next blocker is WebAudioBridge segmentation / minimum segment duration / buffering, not raw mic signal.
+```
+
 ---
 
 ## 15. Loop 8 — E2E
