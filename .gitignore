@@ -4,6 +4,7 @@ __pycache__/
 
 .debugloop/runs/*
 !.debugloop/runs/.gitkeep
+.debugloop/STOP
 
 .debugloop/queue/**/*.json
 
