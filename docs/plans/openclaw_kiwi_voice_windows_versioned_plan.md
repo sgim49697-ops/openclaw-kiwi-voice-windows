@@ -114,6 +114,15 @@ Kiwi v7.2.3 microphone gain smoke:
   - 8초 발화 probe maxRms 0.00015, 1초 device-check maxRms 0.000151
   - speech gate 0.015 미달로 live Web Microphone dry-run smoke는 중단
   - 현 blocker는 Windows input volume/mute/device/physical mic signal
+
+Kiwi v7.2.4 Windows mic signal fix:
+  - Windows Sound settings opened for manual input device/volume check
+  - windows-cdp dedicated Chrome CDP restarted on port 9222
+  - standard browser probe maxRms 0.000141
+  - raw-audio browser probe maxRms 0.000135
+  - Windows native sounddevice probe maxRms 0.000015 on USB Audio Device
+  - multi-device native scan found no usable speech-level input
+  - live dry-run smoke was not attempted; blocker remains Windows mic hardware/driver/mute/gain/routing
 ```
 
 현재 Node는 `system.run`, `system.run.prepare`, `system.which`, `screen.snapshot`, `camera.list`,
@@ -706,6 +715,33 @@ live dispatcher/browser/node execution: not attempted
 - Windows Sound input에서 같은 USB microphone의 input meter가 말할 때 움직이는지 확인한다.
 - input volume을 80-100으로 설정하고 mute/driver/device routing을 확인한다.
 - `kiwi_browser_mic_level_probe.mjs`가 `maxRms >= 0.015`를 기록한 뒤 live notify/cancel/critical smoke를 재시도한다.
+
+### v7.2.4 - Windows mic native signal verification
+
+상태:
+
+```text
+scope: Windows microphone signal diagnosis only
+OPENCLAW_BIN: dry-run-openclaw.cmd
+KIWI_WS_ENABLED: false
+live dispatcher/browser/node execution: not attempted
+```
+
+결과:
+
+- Windows Sound settings를 열어 input device/volume 확인을 유도했다.
+- `windows-cdp` attachOnly profile이 중지되어 dedicated Chrome CDP를 다시 띄웠다.
+- browser standard probe는 `maxRms=0.000141`, raw-audio probe는 `maxRms=0.000135`였다.
+- Windows native `sounddevice` capture helper를 추가했고 USB Audio Device native RMS는 `0.000015`였다.
+- input device indexes `1, 8, 18, 23, 0, 7`을 스캔했지만 유효한 speech-level signal은 없었다.
+- device index `23`은 `PaErrorCode -9996`으로 열리지 않았다.
+- live Web Microphone dry-run smoke는 중단했고, 다음 반복 전 Windows mic hardware/driver/mute/gain/routing 수동 보정이 필요하다.
+
+다음:
+
+- Windows input meter가 발화에 반응하는지 먼저 확인한다.
+- USB mic cable/adapter, mute switch, Windows input volume, driver, privacy permission, default communication device를 점검한다.
+- `kiwi_windows_audio_probe.py`와 `kiwi_browser_mic_level_probe.mjs`가 speech gate를 통과한 뒤 live smoke를 재시도한다.
 
 ### Windows 설치 원칙
 

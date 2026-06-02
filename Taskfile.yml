@@ -115,6 +115,11 @@ tasks:
     cmds:
       - node scripts/wsl/kiwi_browser_mic_level_probe.mjs
 
+  kiwi:windows-audio-probe:
+    desc: Measure Windows native microphone RMS through the Kiwi venv.
+    cmds:
+      - python3 scripts/wsl/kiwi_windows_audio_probe.py || python scripts/wsl/kiwi_windows_audio_probe.py
+
   debug:once:
     desc: Run one read-only debug monitor pass.
     cmds:

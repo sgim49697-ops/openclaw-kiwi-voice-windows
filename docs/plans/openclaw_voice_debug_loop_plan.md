@@ -681,6 +681,44 @@ Set input volume to 80-100, disable mute, and test close-range speech.
 Then rerun kiwi_browser_mic_level_probe.mjs until maxRms >= 0.015 before trying live notify/cancel/critical smoke.
 ```
 
+v7.2.4 result:
+
+```text
+Preflight:
+  - repo started clean
+  - Kiwi ready and dashboard reachable
+  - OPENCLAW_BIN remains C:\Users\ksg63\projects\kiwi-voice\dry-run-openclaw.cmd
+  - KIWI_WS_ENABLED=false
+  - Gateway approvals remain security=allowlist, ask=always, askFallback=deny, autoAllowSkills=off
+  - Windows Node remains paired/connected
+
+Browser mic probe:
+  - windows-cdp was attachOnly and stopped, so dedicated Chrome CDP was restarted on port 9222
+  - dashboard tab opened through windows-cdp
+  - selected browser audio track: 마이크(USB Audio Device) (0c76:160a)
+  - standard probe maxRms: 0.000141
+  - raw-audio probe with echoCancellation/noiseSuppression/autoGainControl=false maxRms: 0.000135
+  - both remain far below Kiwi speech gate 0.015
+
+Windows native audio probe:
+  - scripts/wsl/kiwi_windows_audio_probe.py added for Windows Kiwi venv sounddevice capture
+  - default USB Audio Device capture rms: 0.000015, peak: 0.000031
+  - scanned indexes 1, 8, 18, 23, 0, 7; no input reached useful speech level
+  - device 23 failed to open with PaErrorCode -9996
+
+Decision:
+  - live Web Microphone dry-run smoke was not attempted because browser and native Windows capture both show near-silence.
+  - blocker is Windows microphone hardware/driver/mute/gain/routing, not Kiwi WebAudioBridge, STT, or Chrome processing.
+```
+
+v7.2.4 next action:
+
+```text
+Fix Windows microphone outside the automation path first: check cable/adapter, Windows input meter, app microphone permission, device mute switch, driver, and input boost.
+Rerun kiwi_windows_audio_probe.py and kiwi_browser_mic_level_probe.mjs only after the Windows input meter visibly reacts to speech.
+Proceed to live notify/cancel/critical dry-run smoke only after maxRms >= 0.015.
+```
+
 ---
 
 ## 15. Loop 8 — E2E

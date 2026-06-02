@@ -19,6 +19,8 @@ Options:
   --duration-ms <ms>     Recording duration; speak during this window (default: 6000)
   --interval-ms <ms>     Sampling interval (default: 100)
   --timeout-ms <ms>      CDP command timeout (default: 12000)
+  --raw-audio            Request mic without echo cancellation/noise suppression/auto gain
+  --device-id <id>       Optional getUserMedia deviceId, e.g. default or communications
   --out <path>           JSON artifact path (default: .debugloop/artifacts/kiwi/browser-mic-level.json)
   --jsonl <path>         JSONL run log path (default: .debugloop/runs/latest.jsonl)
   -h, --help             Show this help
@@ -32,6 +34,8 @@ function parseArgs(argv) {
     durationMs: 6000,
     intervalMs: 100,
     timeoutMs: 12000,
+    rawAudio: false,
+    deviceId: null,
     out: resolve(ARTIFACT_DIR, "browser-mic-level.json"),
     jsonl: resolve(RUNS_DIR, "latest.jsonl"),
   };
@@ -60,6 +64,14 @@ function parseArgs(argv) {
     }
     if (arg === "--timeout-ms") {
       args.timeoutMs = positiveInteger(requiredValue(argv, ++index, arg), arg);
+      continue;
+    }
+    if (arg === "--raw-audio") {
+      args.rawAudio = true;
+      continue;
+    }
+    if (arg === "--device-id") {
+      args.deviceId = requiredValue(argv, ++index, arg);
       continue;
     }
     if (arg === "--out") {
@@ -196,14 +208,29 @@ function findDashboardTarget(tabs, dashboardUrl) {
   return tabs.find((tab) => tab.type === "page" && String(tab.url || "").startsWith(normalized));
 }
 
-function measurementExpression(durationMs, intervalMs, threshold) {
+function measurementExpression(durationMs, intervalMs, threshold, rawAudio, deviceId) {
+  const rawAudioJson = JSON.stringify(Boolean(rawAudio));
+  const deviceIdJson = JSON.stringify(deviceId || null);
   return `
 (async () => {
   const durationMs = ${durationMs};
   const intervalMs = ${intervalMs};
   const threshold = ${threshold};
+  const rawAudio = ${rawAudioJson};
+  const deviceId = ${deviceIdJson};
+  const audioConstraints = rawAudio
+    ? { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+    : true;
+  if (deviceId && audioConstraints !== true) {
+    audioConstraints.deviceId = { exact: deviceId };
+  }
+  const getUserMediaConstraints = {
+    audio: audioConstraints === true && deviceId ? { deviceId: { exact: deviceId } } : audioConstraints,
+    video: false
+  };
   const result = {
     permissionState: null,
+    requestedConstraints: getUserMediaConstraints,
     audioInputs: [],
     selectedAudioTrack: null,
     sampleCount: 0,
@@ -223,7 +250,7 @@ function measurementExpression(durationMs, intervalMs, threshold) {
         result.permissionState = "unknown";
       }
     }
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    const stream = await navigator.mediaDevices.getUserMedia(getUserMediaConstraints);
     if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
       try {
         const devices = await navigator.mediaDevices.enumerateDevices();
@@ -347,7 +374,7 @@ async function main() {
   let evaluated;
   try {
     evaluated = await connection.send("Runtime.evaluate", {
-      expression: measurementExpression(args.durationMs, args.intervalMs, KIWI_SPEECH_GATE),
+      expression: measurementExpression(args.durationMs, args.intervalMs, KIWI_SPEECH_GATE, args.rawAudio, args.deviceId),
       awaitPromise: true,
       returnByValue: true,
     });
@@ -371,6 +398,8 @@ async function main() {
     probe: {
       durationMs: args.durationMs,
       intervalMs: args.intervalMs,
+      rawAudio: args.rawAudio,
+      deviceId: args.deviceId,
       kiwiSpeechGateMeanAbs: KIWI_SPEECH_GATE,
     },
     verdict,

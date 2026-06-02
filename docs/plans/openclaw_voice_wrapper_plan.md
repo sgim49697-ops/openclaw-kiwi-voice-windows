@@ -1185,6 +1185,7 @@ task check 통과 또는 task CLI 미설치 시 개별 validator 통과
 - [~] v7.2.1 Web Microphone 연결 smoke: connected, transcript 미검출
 - [~] v7.2.2 Audio/STT/wake calibration helper 추가, mic RMS 미달 확인
 - [~] v7.2.3 Microphone input gain smoke: USB mic selected, RMS 미달
+- [~] v7.2.4 Windows native mic signal probe: native/browser 모두 RMS 미달
 - [ ] owner voice 등록
 - [ ] Telegram approval 연결
 - [ ] Gateway v4 WebSocket 호환 또는 CLI fallback 유지 결정
@@ -1297,6 +1298,19 @@ v7.2.3 결과:
 - Kiwi speech gate: 0.015
 - live Web Microphone dry-run smoke는 gate 미달로 중단
 - 다음 gate: Windows input meter/volume/mute/device routing 보정 후 RMS 재측정
+```
+
+v7.2.4 결과:
+
+```text
+- windows-cdp dedicated Chrome CDP restarted on port 9222
+- browser standard maxRms: 0.000141
+- browser raw-audio maxRms: 0.000135
+- Windows native USB Audio Device maxRms: 0.000015
+- scanned native device indexes: 1, 8, 18, 23, 0, 7
+- usable speech-level signal: none
+- live dry-run smoke는 중단
+- 다음 gate: Windows input meter가 실제 발화에 반응하도록 hardware/driver/mute/gain/routing 보정
 ```
 
 정책 변경 전:
