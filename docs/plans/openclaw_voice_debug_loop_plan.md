@@ -10,14 +10,14 @@
 ## Current Status
 
 ```text
-현재 canonical 기준: v7.6.2 Telegram Reject/Duplicate Live Smoke
+현재 canonical 기준: v7.5.2 Browser Read URL Allowlist 확장
 v7.2.1~v7.2.14: microphone/STT/wake/command 진단 archive
 repo 상태: main...origin/main clean
 Gateway approvals: allowlist + ask=always + askFallback=deny + autoAllowSkills=off
 Kiwi runtime: OPENCLAW_BIN=dry-run-openclaw.cmd, KIWI_WS_ENABLED=false
-Live smoke: approved runner로 dispatcher notify 1회, browser_read example.com 1회 통과
+Live smoke: approved runner로 dispatcher notify 1회, browser_read example.com/docs.openclaw.ai 1회씩 통과
 Approval: Telegram adapter fixture, live approve, live reject, duplicate callback 통과
-다음 gate: v7.5.2 Browser read URL allowlist 확장 또는 v7.7 owner voice 등록
+다음 gate: v7.7 owner voice 등록 또는 v7.5.3 Browser read allowlist 템플릿화
 ```
 
 정리 기준:
@@ -1393,6 +1393,36 @@ e2e_approved_runner.py --execute-live --confirm-request-id v7-5-1-browser-read -
 두 번째 live 실행 -> executed marker 때문에 skip
 payloadHash mismatch / browser_interact / Codex plan / user profile / gmail URL live 시도 -> 거부
 ```
+
+## v7.5.2 - Browser Read URL Allowlist 확장
+
+목표:
+
+```text
+browser_read live 대상을 example.com 단일 URL에서 작은 read-only 문서 allowlist로 확장한다.
+```
+
+정책:
+
+- `browser_read` live는 계속 `riskTier=low`, `approvalMethod=manual|telegram`, `profile=windows-cdp`일 때만 허용한다.
+- 허용 URL은 `https://example.com`, `https://docs.openclaw.ai/*`, `https://docs.kiwi-voice.com/*`로 제한한다.
+- non-HTTPS, credentials 포함 URL, query/fragment, allowlist 밖 host, browser_interact는 live 실행 전에 거부한다.
+- live 실행은 계속 `browser_probe.py --profile windows-cdp --url <allowed-url> --snapshot-limit 200 --no-write-log`만 사용한다.
+
+검증:
+
+```text
+approved browser_read https://docs.openclaw.ai -> dry-run 통과
+--execute-live --confirm-request-id -> open/snapshot/screenshot 성공
+두 번째 live 실행 -> executed marker 때문에 skip
+gmail/github/http/evil-host/credentials/query/browser_interact -> live 전 거부
+```
+
+결과:
+
+- `v7-5-2-browser-read-openclaw-docs-20260603-213832` live read-only probe 성공.
+- screenshot artifact는 `.debugloop/artifacts/browser/browser-read-ok.png`에 생성됐다.
+- Gateway approvals는 `allowlist + ask=always + askFallback=deny + autoAllowSkills=off` 상태를 유지했다.
 
 ## v7.6 - Telegram Approval Adapter Fixture Smoke
 
