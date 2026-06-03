@@ -1,4 +1,4 @@
-# kiwi_two_step_stt_gate.py - run the v7.2.12 wake-only then command STT dry-run gate.
+# kiwi_two_step_stt_gate.py - run the wake-only then command STT dry-run gate.
 # debug-autoloop: command=python3 scripts/wsl/kiwi_two_step_stt_gate.py --status
 from __future__ import annotations
 
@@ -16,7 +16,8 @@ ARTIFACT_DIR = ROOT / ".debugloop" / "artifacts" / "kiwi"
 DEFAULT_BASE_DIR = ARTIFACT_DIR / "two-step-v7.2.12"
 DEFAULT_WAKE_PHRASE = "오픈클로"
 DEFAULT_COMMAND_PHRASE = "테스트 알림 보내줘"
-CURRENT_CONFIG_CANDIDATE = "small_prompt_openclaw"
+CURRENT_WAKE_CONFIG_CANDIDATE = "small_prompt_openclaw"
+CURRENT_COMMAND_CONFIG_CANDIDATE = "small_dialog_prompt_commands"
 OUTPUT_LIMIT = 4000
 
 
@@ -65,7 +66,10 @@ def stable_threshold(sample_count: int) -> int:
 
 def candidate_summary(candidate: dict[str, Any], sample_count: int) -> dict[str, Any]:
     command_hits = int(candidate.get("commandHits") or 0)
+    constrained_command_hits = int(candidate.get("constrainedCommandHits") or 0)
     wake_hits = int(candidate.get("wakeHits") or 0)
+    command_stable = command_hits >= stable_threshold(sample_count)
+    constrained_command_stable = constrained_command_hits >= stable_threshold(sample_count)
     return {
         "id": candidate.get("id"),
         "model": candidate.get("model"),
@@ -73,20 +77,23 @@ def candidate_summary(candidate: dict[str, Any], sample_count: int) -> dict[str,
         "status": candidate.get("status"),
         "wakeHits": wake_hits,
         "commandHits": command_hits,
+        "constrainedCommandHits": constrained_command_hits,
         "hallucinationHits": int(candidate.get("hallucinationHits") or 0),
         "wakePassed": wake_hits > 0,
-        "commandStable": command_hits >= stable_threshold(sample_count),
+        "rawCommandStable": command_stable,
+        "constrainedCommandStable": constrained_command_stable,
+        "commandStable": command_stable or constrained_command_stable,
         "passReason": candidate.get("passReason"),
     }
 
 
-def summarize_eval(path: Path) -> dict[str, Any]:
+def summarize_eval(path: Path, current_candidate_id: str, *, command_only: bool = False) -> dict[str, Any]:
     data = read_json(path)
     sample_count = int(data.get("sampleCount") or 0)
     candidates = [candidate_summary(candidate, sample_count) for candidate in data.get("candidates", [])]
-    wake_candidates = [candidate for candidate in candidates if candidate["wakePassed"]]
+    wake_candidates = [] if command_only else [candidate for candidate in candidates if candidate["wakePassed"]]
     command_candidates = [candidate for candidate in candidates if candidate["commandStable"]]
-    current = next((candidate for candidate in candidates if candidate["id"] == CURRENT_CONFIG_CANDIDATE), None)
+    current = next((candidate for candidate in candidates if candidate["id"] == current_candidate_id), None)
     return {
         "path": str(path),
         "status": data.get("status"),
@@ -95,7 +102,8 @@ def summarize_eval(path: Path) -> dict[str, Any]:
         "candidates": candidates,
         "wakeGatePassed": bool(wake_candidates),
         "commandGatePassed": bool(command_candidates),
-        "currentConfigWakePassed": bool(current and current["wakePassed"]),
+        "currentConfigCandidate": current_candidate_id,
+        "currentConfigWakePassed": bool((not command_only) and current and current["wakePassed"]),
         "currentConfigCommandPassed": bool(current and current["commandStable"]),
         "bestWakeCandidate": wake_candidates[0] if wake_candidates else None,
         "bestCommandCandidate": command_candidates[0] if command_candidates else None,
@@ -141,7 +149,7 @@ def print_status(base_dir: Path) -> int:
 
 
 def parse_args(argv: Sequence[str]) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run the v7.2.12 wake-only then command STT dry-run gate.")
+    parser = argparse.ArgumentParser(description="Run the wake-only then command STT dry-run gate.")
     parser.add_argument("--status", action="store_true")
     parser.add_argument("--skip-capture", action="store_true")
     parser.add_argument("--base-dir", type=Path, default=DEFAULT_BASE_DIR)
@@ -272,8 +280,8 @@ def main(argv: Sequence[str]) -> int:
         print(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True))
         return 1
 
-    report["wake"] = summarize_eval(wake_eval)
-    report["command"] = summarize_eval(command_eval)
+    report["wake"] = summarize_eval(wake_eval, CURRENT_WAKE_CONFIG_CANDIDATE)
+    report["command"] = summarize_eval(command_eval, CURRENT_COMMAND_CONFIG_CANDIDATE, command_only=True)
     report["liveReady"] = bool(
         report["wake"]["currentConfigWakePassed"] and report["command"]["currentConfigCommandPassed"]
     )

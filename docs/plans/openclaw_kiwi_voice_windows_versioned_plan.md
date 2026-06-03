@@ -205,6 +205,18 @@ Kiwi v7.2.12 wake-only two-step STT gate:
   - all command captures crossed the browser RMS gate, so the blocker is STT recognition rather than microphone signal
   - live dry-run smoke was skipped because liveReady=false
   - no dispatcher/OpenClaw real agent/browser/node action executed
+
+Kiwi v7.2.13 dialog-mode command STT gate:
+  - local Kiwi checkout was backed up at C:\Users\ksg63\projects\kiwi-voice\backups\openclaw-kiwi-voice-windows\v7.2.13-20260603-104809
+  - listener.py now chooses a wake prompt for wake detection and a command prompt for speech that started in dialog mode
+  - config_loader.py/service.py/config.yaml now carry stt.whisper_dialog_prompt
+  - templates/kiwi/config.yaml.template now includes dialog timeout, Whisper filters, web_audio buffering, and wake/dialog prompts
+  - repo STT eval now includes small_dialog_prompt_commands and records constrained dry-run routes
+  - constrained route only maps low-risk notify when "테스트"+"알림"+"보내/전송" are present and rejects critical/hallucination markers
+  - Windows Kiwi tests passed: 31 tests
+  - existing v7.2.12 command WAVs still do not pass the stable notify gate: commandHits=0/3, constrainedCommandHits=0/3
+  - live smoke remains skipped until offline command gate passes
+  - no dispatcher/OpenClaw real agent/browser/node action executed
 ```
 
 현재 Node는 `system.run`, `system.run.prepare`, `system.which`, `screen.snapshot`, `camera.list`,

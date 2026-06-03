@@ -1451,6 +1451,25 @@ v7.2.12 wake-only two-step STT gate 결과:
 - 다음 gate는 alternate STT backend, constrained command grammar, browser raw/noise setting, or dedicated wake-word engine 비교
 ```
 
+v7.2.13 dialog-mode command STT 보정 결과:
+
+```text
+- Windows Kiwi local backup:
+  C:\Users\ksg63\projects\kiwi-voice\backups\openclaw-kiwi-voice-windows\v7.2.13-20260603-104809
+- local listener.py는 speech-start dialog mode를 STT 전에 보존하고 dialog command prompt를 별도로 사용
+- local config_loader.py/service.py/config.yaml은 stt.whisper_dialog_prompt를 전달
+- dialog prompt 기본값: "테스트 알림 보내줘. 취소. 결제. Gmail. 비밀번호."
+- repo STT eval은 small_dialog_prompt_commands 후보와 constrained dry-run command route를 기록
+- Taskfile recipe kiwi:two-step-stt-gate는 v7.2.13 evaluator 기준으로 재사용
+- templates/kiwi/config.yaml.template도 wake/dialog prompt 분리 설정을 반영
+- constrained route는 "테스트"+"알림"+"보내/전송" 조합만 low-risk notify로 보고, critical/hallucination marker는 deny 또는 no-route 처리
+- Windows Kiwi tests: 31 passed
+- 기존 v7.2.12 command WAV에 dialog prompt를 적용해도 stable notify gate는 아직 통과 전(commandHits=0/3, constrainedCommandHits=0/3)
+- live notify/cancel/critical smoke는 offline command gate 통과 전까지 계속 보류
+- 실제 dispatcher/OpenClaw agent/browser/node 실행 없음
+- 다음 gate는 fresh raw/noise-off command capture 또는 alternate STT/backend/dedicated command grammar 비교
+```
+
 정책 변경 전:
 
 ```text

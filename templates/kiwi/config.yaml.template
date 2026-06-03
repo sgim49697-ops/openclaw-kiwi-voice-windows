@@ -5,6 +5,7 @@ wake_word:
   engine: "text"
   keyword: "오픈클로"
   threshold: 0.5
+  dialog_timeout_seconds: 8.0
 
 stt:
   engine: "faster-whisper"
@@ -12,6 +13,16 @@ stt:
   device: "cuda"
   compute_type: "float16"
   language: "ko"
+  whisper_no_speech_threshold: 0.85
+  whisper_avg_logprob_min: -1.2
+  whisper_timestamp_slack_seconds: 1.0
+  whisper_timestamp_multiplier: 2.0
+  whisper_initial_prompt: "오픈클로"
+  whisper_dialog_prompt: "테스트 알림 보내줘. 취소. 결제. Gmail. 비밀번호."
+
+web_audio:
+  min_submit_seconds: 1.0
+  end_silence_seconds: 0.8
 
 websocket:
   enabled: false

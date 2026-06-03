@@ -33,6 +33,8 @@ from faster_whisper import WhisperModel
 
 WAKE_ALIASES = ("오픈클로", "오픈 클로", "오픈클로우", "오픈 클로우")
 COMMAND_MARKERS = ("테스트", "알림", "보내")
+CRITICAL_MARKERS = ("결제", "gmail", "메일", "비밀번호", "otp", "삭제", "shell", "powershell", "cmd")
+CANCEL_MARKERS = ("취소", "중지", "그만", "멈춰")
 HALLUCINATION_MARKERS = (
     "구독",
     "좋아요",
@@ -67,6 +69,41 @@ def contains_command(text: str) -> bool:
 def contains_hallucination(text: str) -> bool:
     normalized = normalize(text)
     return any(normalize(marker) in normalized for marker in HALLUCINATION_MARKERS)
+
+
+def contains_critical(text: str) -> bool:
+    normalized = normalize(text)
+    return any(normalize(marker) in normalized for marker in CRITICAL_MARKERS)
+
+
+def classify_constrained_command(text: str) -> dict | None:
+    normalized = normalize(text)
+    if not normalized:
+        return None
+    if contains_critical(text):
+        return {
+            "lane": "deny",
+            "action": None,
+            "riskTier": "critical",
+            "reason": "critical keyword detected",
+        }
+    if contains_hallucination(text):
+        return None
+    if any(normalize(marker) in normalized for marker in CANCEL_MARKERS):
+        return {
+            "lane": "control",
+            "action": "cancel",
+            "riskTier": "low",
+            "reason": "cancel command detected",
+        }
+    if "테스트" in normalized and "알림" in normalized and ("보내" in normalized or "전송" in normalized):
+        return {
+            "lane": "windows_wrapper",
+            "action": "notify",
+            "riskTier": "low",
+            "reason": "constrained low-risk notify dry-run command",
+        }
+    return None
 
 
 def parse_candidate(raw: str) -> dict:
@@ -115,6 +152,7 @@ def transcribe_sample(model: WhisperModel, sample: Path, args, prompt: str) -> d
         "wakeDetected": contains_wake(text),
         "commandDetected": contains_command(text),
         "hallucinationDetected": contains_hallucination(text),
+        "constrainedRoute": classify_constrained_command(text),
     }
 
 
@@ -165,6 +203,8 @@ def main(argv) -> int:
             "status": "blocked",
             "wakeHits": 0,
             "commandHits": 0,
+            "constrainedCommandHits": 0,
+            "criticalDenyHits": 0,
             "hallucinationHits": 0,
             "results": [],
             "error": None,
@@ -177,13 +217,23 @@ def main(argv) -> int:
                 candidate_report["wakeHits"] += 1 if result["wakeDetected"] else 0
                 candidate_report["commandHits"] += 1 if result["commandDetected"] else 0
                 candidate_report["hallucinationHits"] += 1 if result["hallucinationDetected"] else 0
-            command_stable = candidate_report["commandHits"] >= max(2, len(samples) // 2 + 1)
-            if candidate_report["wakeHits"] > 0:
-                candidate_report["status"] = "passed"
-                candidate_report["passReason"] = "wake phrase recognized"
-            elif args.allow_command_only and command_stable:
+                route = result.get("constrainedRoute") or {}
+                candidate_report["constrainedCommandHits"] += 1 if route.get("action") in {"notify", "cancel"} else 0
+                candidate_report["criticalDenyHits"] += 1 if route.get("riskTier") == "critical" else 0
+            stable_threshold = max(2, len(samples) // 2 + 1)
+            command_stable = candidate_report["commandHits"] >= stable_threshold
+            constrained_stable = candidate_report["constrainedCommandHits"] >= stable_threshold
+            if args.allow_command_only and command_stable:
                 candidate_report["status"] = "passed"
                 candidate_report["passReason"] = "stable command recognized for a future two-step wake flow"
+            elif args.allow_command_only and constrained_stable:
+                candidate_report["status"] = "passed"
+                candidate_report["passReason"] = "stable constrained dry-run command route recognized"
+            elif args.allow_command_only:
+                candidate_report["passReason"] = "command not recognized"
+            elif candidate_report["wakeHits"] > 0:
+                candidate_report["status"] = "passed"
+                candidate_report["passReason"] = "wake phrase recognized"
             else:
                 candidate_report["passReason"] = "wake phrase not recognized"
         except Exception as exc:
@@ -215,6 +265,7 @@ if __name__ == "__main__":
 
 
 DEFAULT_CANDIDATES = (
+    "small_dialog_prompt_commands:small:테스트 알림 보내줘. 취소. 결제. Gmail. 비밀번호.",
     "small_prompt_openclaw:small:오픈클로",
     "small_no_prompt:small:__NONE__",
     "medium_prompt_openclaw:medium:오픈클로",

@@ -1204,6 +1204,16 @@ approved runner는 성공한 request마다 `.debugloop/runs/e2e-approved-execute
 - external approval 기반 voice approved run
 ```
 
+현재 Kiwi voice gate:
+
+```text
+- v7.2.13은 live execution이 아니라 dialog-mode command STT 보정 단계
+- Windows Kiwi local listener는 wake prompt와 dialog command prompt를 분리
+- repo STT eval은 constrained low-risk dry-run route를 기록하되, critical/hallucination marker는 통과시키지 않음
+- 기존 command WAV는 아직 stable notify gate 미통과(commandHits=0/3, constrainedCommandHits=0/3)라 live notify/cancel/critical smoke는 보류
+- OPENCLAW_BIN=dry-run-openclaw.cmd, KIWI_WS_ENABLED=false, Gateway approvals locked 유지
+```
+
 ---
 
 ## 19. Definition of Done
