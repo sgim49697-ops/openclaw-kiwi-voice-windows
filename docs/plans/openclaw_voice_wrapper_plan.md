@@ -1189,8 +1189,9 @@ task check 통과 또는 task CLI 미설치 시 개별 validator 통과
 - [x] v7.5 approved notify live execution smoke
 - [x] v7.5.1 Browser read approved live smoke
 - [x] v7.6 Telegram approval adapter fixture smoke
+- [x] v7.6.1 Telegram live button approve smoke
 - [ ] owner voice 등록
-- [ ] Telegram live button approval 연결
+- [ ] Telegram reject/duplicate live smoke
 - [ ] Browser read URL allowlist 확장
 - [ ] Gateway v4 WebSocket 호환 또는 CLI fallback 유지 결정
 
@@ -1208,6 +1209,7 @@ e2e_approved_runner.py --dry-run으로 approved request 검증 가능
 approved low-risk notify request는 명시적 live confirm 후 1회 실행 가능
 approved low-risk browser_read request는 windows-cdp + example.com에서 1회 실행 가능
 Telegram callback fixture로 pending -> approved/rejected 전이 가능
+Telegram live button approve로 pending -> approved 전이 가능
 browser/Codex plan/critical live execution은 계속 거부
 ```
 
@@ -1608,7 +1610,9 @@ v7.6 Telegram approval adapter fixture 결과:
 - wrong chat id, wrong payloadHash tail, unknown request id는 거부
 - critical approve callback은 rejected 처리
 - repeated callback은 ignored 처리되어 duplicate transition 없음
-- local Telegram env가 없어 live send/poll smoke는 v7.6.1로 보류
+- local Telegram env 구성 후 v7.6.1 live approve button smoke 통과
+- `v7-6-1-telegram-live-notify-20260603-210927`는 approvedBy=telegram:8194519852 metadata를 기록
+- approved runner는 `--dry-run`으로만 검증했고 실제 dispatcher/browser/Codex/Kiwi action은 실행하지 않음
 - live execution allowlist는 notify + windows-cdp example.com browser_read 그대로 유지
 ```
 

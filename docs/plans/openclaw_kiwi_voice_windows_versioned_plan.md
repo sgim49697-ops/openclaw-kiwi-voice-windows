@@ -141,8 +141,10 @@ Telegram approval adapter fixture v7.6:
   - fixture approve가 approvedBy=telegram:fixture-owner metadata를 기록
   - wrong chat id, wrong payloadHash tail, unknown request id는 거부
   - critical approve callback은 approved가 아니라 rejected로 처리
-  - local Telegram env가 없어 live send/poll smoke는 v7.6.1로 보류
-  - next gate: v7.6.1 Telegram live button smoke 또는 v7.5.2 Browser read URL allowlist 확장
+  - local Telegram env 구성 후 v7.6.1 live button approve smoke 통과
+  - `v7-6-1-telegram-live-notify-20260603-210927`는 approvedBy=telegram:8194519852 metadata를 기록
+  - approved runner는 `--dry-run`으로만 검증했고 실제 dispatcher/browser/Codex/Kiwi action은 실행하지 않음
+  - next gate: v7.6.2 Telegram reject/duplicate live smoke 또는 v7.5.2 Browser read URL allowlist 확장
 ```
 
 현재 Node는 `system.run`, `system.run.prepare`, `system.which`, `screen.snapshot`, `camera.list`,
@@ -1112,7 +1114,7 @@ execution: browser_read only
 ```text
 상태: Telegram approval adapter fixture 완료
 범위: pending request render, callback fixture approve/reject
-execution: live Telegram send/poll 미수행
+execution: v7.6.1 live Telegram approve button smoke 완료, runner는 dry-run만 수행
 ```
 
 완료 기준:
@@ -1122,12 +1124,13 @@ execution: live Telegram send/poll 미수행
 - approved request는 `approvalMethod=telegram`, `approvedBy=telegram:<chat_id>`, `approvedAt`을 기록한다.
 - wrong chat id, hash tail mismatch, unknown request id, critical approve는 거부된다.
 - duplicate callback은 추가 전이 없이 ignored 처리된다.
+- live Approve button은 `approvalMethod=telegram`, `approvedBy=telegram:8194519852`, `approvedAt`을 기록한다.
 - live execution 범위는 v7.5.1에서 확장하지 않는다.
 
 v7.6.1 이후:
 
 - owner voice 등록
-- Telegram live button approval 연결
+- Telegram reject/duplicate live smoke
 - Browser read URL allowlist 확장
 - Gateway v4 WebSocket compatibility 또는 CLI fallback 최종 결정
 

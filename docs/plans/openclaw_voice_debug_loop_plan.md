@@ -10,14 +10,14 @@
 ## Current Status
 
 ```text
-현재 canonical 기준: v7.6 Telegram Approval Adapter Fixture Smoke
+현재 canonical 기준: v7.6.1 Telegram Live Button Smoke
 v7.2.1~v7.2.14: microphone/STT/wake/command 진단 archive
 repo 상태: main...origin/main clean
 Gateway approvals: allowlist + ask=always + askFallback=deny + autoAllowSkills=off
 Kiwi runtime: OPENCLAW_BIN=dry-run-openclaw.cmd, KIWI_WS_ENABLED=false
 Live smoke: approved runner로 dispatcher notify 1회, browser_read example.com 1회 통과
-Approval: Telegram adapter fixture 승인/거절 통과, live Telegram env는 아직 미설정
-다음 gate: v7.6.1 Telegram live button smoke 또는 v7.5.2 Browser read URL allowlist 확장
+Approval: Telegram adapter fixture와 live button approve 통과
+다음 gate: v7.6.2 Telegram reject/duplicate live smoke 또는 v7.5.2 Browser read URL allowlist 확장
 ```
 
 정리 기준:
@@ -1423,6 +1423,31 @@ wrong chat id / wrong payloadHash tail / unknown request id -> 거부
 critical approve callback -> rejected
 repeated callback -> ignored, duplicate transition 없음
 ```
+
+## v7.6.1 - Telegram Live Button Smoke
+
+목표:
+
+```text
+pending approval request를 실제 Telegram 메시지로 보내고,
+owner가 inline Approve 버튼을 탭하면 approved queue로 전이되는지 검증한다.
+```
+
+검증:
+
+```text
+voice_planner.py --write-approval -> pending notify 생성
+telegram_approval.py send-pending -> @total_assistant_bot 메시지 전송
+telegram_approval.py poll-once -> approvalMethod=telegram, approvedBy=telegram:8194519852
+e2e_approved_runner.py --dry-run -> dispatcher command preview만 확인
+```
+
+결과:
+
+- `v7-6-1-telegram-live-notify-20260603-210927` 승인 callback 처리 성공.
+- approved metadata는 `approvalMethod=telegram`, `approvedBy=telegram:8194519852`, `approvedAt`을 기록했다.
+- runner는 `--dry-run`으로만 실행했고 실제 dispatcher/browser/Codex/Kiwi action은 실행하지 않았다.
+- Gateway approvals는 `allowlist + ask=always + askFallback=deny + autoAllowSkills=off` 상태를 유지했다.
 
 검증 케이스:
 
