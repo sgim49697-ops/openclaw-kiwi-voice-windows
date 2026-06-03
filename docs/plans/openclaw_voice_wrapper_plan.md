@@ -1432,6 +1432,25 @@ v7.2.11 STT 후보 비교 결과:
 - 다음 gate는 two-step wake flow 또는 alternate STT/backend 비교
 ```
 
+v7.2.12 wake-only two-step STT gate 결과:
+
+```text
+- Windows Kiwi local backup:
+  C:\Users\ksg63\projects\kiwi-voice\backups\openclaw-kiwi-voice-windows\v7.2.12-20260603-102900
+- local config_loader.py/service.py는 wake_word.dialog_timeout_seconds를 KiwiListener dialog_timeout으로 전달
+- local config.yaml: wake_word.dialog_timeout_seconds=8.0
+- Windows Kiwi tests: 29 passed
+- repo helper: scripts/wsl/kiwi_two_step_stt_gate.py
+- Taskfile recipe: kiwi:two-step-stt-gate
+- artifact: .debugloop/artifacts/kiwi/two-step-v7.2.12/
+- wake-only eval: current config small+"오픈클로" wakeHits=1/3
+- command-only eval: "테스트 알림 보내줘" commandHits=0/3
+- command samples는 모두 browser RMS gate를 넘었으므로 mic signal 문제는 아님
+- live notify/cancel/critical smoke는 liveReady=false라 시도하지 않음
+- 실제 dispatcher/OpenClaw agent/browser/node 실행 없음
+- 다음 gate는 alternate STT backend, constrained command grammar, browser raw/noise setting, or dedicated wake-word engine 비교
+```
+
 정책 변경 전:
 
 ```text

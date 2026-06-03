@@ -192,6 +192,19 @@ Kiwi v7.2.11 STT model comparison:
   - local config already matched selected model/prompt, so no Windows Kiwi config change was needed
   - direct notify dry-run smoke remains blocked until a two-step wake flow or alternate STT/backend can preserve the command body
   - no dispatcher/OpenClaw real agent/browser/node action executed
+
+Kiwi v7.2.12 wake-only two-step STT gate:
+  - local Kiwi checkout was backed up at C:\Users\ksg63\projects\kiwi-voice\backups\openclaw-kiwi-voice-windows\v7.2.12-20260603-102900
+  - config_loader.py/service.py now pass wake_word.dialog_timeout_seconds to KiwiListener
+  - local config.yaml sets wake_word.dialog_timeout_seconds=8.0
+  - Windows Kiwi tests passed: 29 tests
+  - repo helper added: scripts/wsl/kiwi_two_step_stt_gate.py and Taskfile recipe kiwi:two-step-stt-gate
+  - two-step artifacts: .debugloop/artifacts/kiwi/two-step-v7.2.12/
+  - wake-only gate passed minimally with current config: wakeHits=1/3
+  - command-only gate failed: "테스트 알림 보내줘" commandHits=0/3
+  - all command captures crossed the browser RMS gate, so the blocker is STT recognition rather than microphone signal
+  - live dry-run smoke was skipped because liveReady=false
+  - no dispatcher/OpenClaw real agent/browser/node action executed
 ```
 
 현재 Node는 `system.run`, `system.run.prepare`, `system.which`, `screen.snapshot`, `camera.list`,
@@ -1001,7 +1014,8 @@ OpenClaw approvals / dispatcher / Node policy: unchanged
 
 - v7.2.11에서 STT model/backend를 비교한다.
 - v7.2.11 결과, `small + "오픈클로"` prompt가 wake phrase는 3/3 인식했지만 command body는 0/3이었다.
-- 다음은 v7.2.12에서 wake-only two-step flow, browser audio raw/noise setting 비교, or alternate STT backend를 검증한다.
+- v7.2.12 결과, wake-only two-step flow도 command-only STT가 `테스트 알림 보내줘`를 0/3으로 놓쳐 blocked다.
+- 다음은 v7.2.13에서 alternate STT backend, constrained command grammar, browser raw/noise setting, or dedicated wake-word engine을 비교한다.
 - notify/cancel/critical live smoke는 wake phrase와 command가 dry-run shim에 안정적으로 도달한 뒤 재시도한다.
 
 ### Windows 설치 원칙

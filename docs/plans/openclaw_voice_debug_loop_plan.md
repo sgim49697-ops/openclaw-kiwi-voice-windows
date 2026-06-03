@@ -987,6 +987,38 @@ Decision:
   - no dispatcher/OpenClaw real agent/browser/node action executed
 ```
 
+v7.2.12 wake-only two-step STT gate result:
+
+```text
+Preflight:
+  - repo clean before changes
+  - Kiwi ready, OPENCLAW_BIN=dry-run-openclaw.cmd, KIWI_WS_ENABLED=false
+  - Gateway approvals remained allowlist + ask=always + deny + autoAllowSkills=off
+
+Local Kiwi patch:
+  - backup: C:\Users\ksg63\projects\kiwi-voice\backups\openclaw-kiwi-voice-windows\v7.2.12-20260603-102900
+  - config_loader.py now reads wake_word.dialog_timeout_seconds
+  - service.py passes dialog_timeout to KiwiListener
+  - local config.yaml sets wake_word.dialog_timeout_seconds: 8.0
+  - Windows Kiwi tests passed: 29 tests
+
+Offline gate:
+  - helper: scripts/wsl/kiwi_two_step_stt_gate.py
+  - artifacts: .debugloop/artifacts/kiwi/two-step-v7.2.12/
+  - wake-only capture used windows-cdp deviceId=communications
+  - wake eval under current config passed minimally: wakeHits=1/3
+  - command-only capture crossed the RMS gate for all 3 samples
+  - command eval failed: commandHits=0/3 for "테스트 알림 보내줘"
+  - no-prompt command candidate hallucinated "구독/좋아요" style phrases
+  - medium+prompt recognized wake-like text but still did not recover the command
+
+Decision:
+  - live two-step notify/cancel/critical smoke was not attempted
+  - blocker is now command-only Korean STT reliability, not dialog-mode timeout wiring
+  - next gate is alternate STT backend or constrained command grammar/wake engine comparison
+  - no dispatcher/OpenClaw real agent/browser/node action executed
+```
+
 Rollback:
   - Remove the three STT probe scripts and Taskfile recipes.
   - Revert debug_autoloop marker parsing to Python-only if Node marker discovery is not wanted.
