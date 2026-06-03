@@ -105,7 +105,17 @@ Codex OAuth planner v7.3.1:
   - planner output schema는 OpenAI structured output subset에 맞게 `type`, `required`, `additionalProperties=false` 적용
   - notify, cancel, critical deny, browser_read, browser_interact, prompt injection live planner probe 통과
   - Windows Kiwi dry-run shim 경로도 Codex planner preview만 생성하고 실제 action은 실행하지 않음
-  - next gate: v7.4 owner voice + Telegram/manual approval
+  - next gate: v7.4 external approval gate
+
+External approval gate v7.4:
+  - manual/local approval queue contract 고정
+  - pending -> approved/rejected 상태 전이를 `approval_queue.py`로 명시화
+  - approve는 request id 재확인, method, actor가 모두 있을 때만 허용
+  - approved JSON은 approvalMethod, approvedBy, approvedAt을 기록
+  - rejected JSON은 rejectedBy, rejectedAt을 기록하고 runner 대상에서 제외
+  - approved runner는 이번 batch에서 `--dry-run` 검증만 수행
+  - Telegram은 `templates/telegram/approval.env.example` 템플릿만 추가하고 secret은 repo에 저장하지 않음
+  - next gate: v7.5 approved execution smoke
 ```
 
 현재 Node는 `system.run`, `system.run.prepare`, `system.which`, `screen.snapshot`, `camera.list`,
@@ -1011,10 +1021,37 @@ v7.3.1 검증 결과:
 - critical/prompt injection은 `decision=deny`, `riskTier=critical`, approval 없음
 - Browser read/interact는 각각 `browser_read`, `browser_interact` approval preview 생성
 
-v7.4 이후:
+### v7.4 - External Approval Gate Contract
+
+```text
+상태: repo-local manual approval contract 완료
+범위: pending/approved/rejected queue, dry-run approved runner
+execution: dry-run only
+```
+
+흐름:
+
+```text
+Codex planner approval preview
+→ .debugloop/queue/pending/<id>.json
+→ user/manual approval via approval_queue.py
+→ .debugloop/queue/approved/<id>.json
+→ e2e_approved_runner.py --dry-run
+```
+
+완료 기준:
+
+- pending request 상세 조회, approve, reject가 명시적 CLI로 가능하다.
+- approve는 `--confirm-request-id`가 일치하지 않으면 실패한다.
+- approved request는 approval metadata를 포함한다.
+- payloadHash mismatch와 critical risk는 runner가 거부한다.
+- rejected request는 approved runner 대상이 아니다.
+
+v7.5 이후:
 
 - owner voice 등록
 - Telegram/manual approval 연결
+- approved request live smoke
 - Gateway v4 WebSocket compatibility 또는 CLI fallback 최종 결정
 
 ### Windows 설치 원칙

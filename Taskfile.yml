@@ -55,6 +55,21 @@ tasks:
     cmds:
       - python3 scripts/wsl/approval_queue.py status || python scripts/wsl/approval_queue.py status
 
+  approval:show:
+    desc: Print one approval request JSON.
+    cmds:
+      - 'python3 scripts/wsl/approval_queue.py show --request-id "{{.REQUEST_ID | default ""}}" || python scripts/wsl/approval_queue.py show --request-id "{{.REQUEST_ID | default ""}}"'
+
+  approval:approve:
+    desc: Manually approve one pending request with explicit owner confirmation.
+    cmds:
+      - 'python3 scripts/wsl/approval_queue.py approve --request-id "{{.REQUEST_ID | default ""}}" --method manual --approved-by owner --confirm-request-id "{{.REQUEST_ID | default ""}}" || python scripts/wsl/approval_queue.py approve --request-id "{{.REQUEST_ID | default ""}}" --method manual --approved-by owner --confirm-request-id "{{.REQUEST_ID | default ""}}"'
+
+  approval:reject:
+    desc: Manually reject one pending request with explicit owner confirmation.
+    cmds:
+      - 'python3 scripts/wsl/approval_queue.py reject --request-id "{{.REQUEST_ID | default ""}}" --method manual --rejected-by owner --confirm-request-id "{{.REQUEST_ID | default ""}}" || python scripts/wsl/approval_queue.py reject --request-id "{{.REQUEST_ID | default ""}}" --method manual --rejected-by owner --confirm-request-id "{{.REQUEST_ID | default ""}}"'
+
   e2e:dry-run:
     desc: Preview text intent routing without executing actions.
     cmds:

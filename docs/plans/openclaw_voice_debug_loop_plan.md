@@ -10,14 +10,14 @@
 ## Current Status
 
 ```text
-현재 canonical 기준: v7.3.1 Codex OAuth voice planner dry-run bridge
+현재 canonical 기준: v7.4 External Approval Gate Contract
 v7.2.1~v7.2.14: microphone/STT/wake/command 진단 archive
 repo 상태: main...origin/main clean
 Gateway approvals: allowlist + ask=always + askFallback=deny + autoAllowSkills=off
 Kiwi runtime: OPENCLAW_BIN=dry-run-openclaw.cmd, KIWI_WS_ENABLED=false
-Live dry-run: Kiwi transcript → Codex planner → approval preview 통과
+Live dry-run: Kiwi transcript → Codex planner → approval preview → manual queue dry-run 통과
 실제 실행: dispatcher/OpenClaw real agent/browser/node live action 없음
-다음 gate: v7.4 owner voice + Telegram/manual approval
+다음 gate: v7.5 approved execution smoke
 ```
 
 정리 기준:
@@ -44,7 +44,7 @@ v7.3부터 음성 transcript의 1차 의미 판단은 Codex OAuth planner가 맡
 결제, Gmail, 비밀번호, 삭제, raw shell 같은 문장도 deterministic pre-guard에서 먼저
 가로채지 않고 planner로 전달한다.
 
-승인은 agent 내부 판단이 아니라 owner voice, Telegram, OpenClaw approval, GitHub PR review, 로컬 승인 파일 같은 **agent 밖의 신호**로만 성립한다. agent는 승인 요청을 만들고 대기할 수 있지만, 자기 요청을 자기 승인으로 처리하지 않는다.
+승인은 agent 내부 판단이 아니라 owner voice, Telegram, OpenClaw approval, GitHub PR review, 로컬 승인 파일 같은 **agent 밖의 신호**로만 성립한다. agent는 승인 요청을 만들고 대기할 수 있지만, 자기 요청을 자기 승인으로 처리하지 않는다. v7.4의 manual/local approval은 사용자가 명시적으로 `approval_queue.py approve --confirm-request-id <id>`를 호출하는 경우에만 성립한다.
 
 ---
 
@@ -1295,7 +1295,7 @@ wouldExecute: dry-run에서는 false
 - 기존 keyword-first cancel/critical deny classifier는 v7.2 archive 또는 legacy fallback으로만 둔다.
 - post-planner validator가 schema, action enum, approval, browser permission, dispatcher policy를 최종 검증한다.
 - high/critical risk는 Codex planner가 판단하더라도 fresh external approval 없이는 실행하지 않는다.
-- v7.4에서 owner voice와 Telegram/manual approval을 연결한다.
+- v7.4에서 manual/local approval queue contract를 고정한다.
 
 v7.3.1 결과:
 
@@ -1308,6 +1308,36 @@ critical: deny / none / critical / approval 없음
 browser_read: request_approval / browser_read / browser_read
 browser_interact: request_approval / browser_interact / browser_interact
 prompt injection: deny / none / critical / approval 없음
+```
+
+## v7.4 - External Approval Gate Contract
+
+목표:
+
+```text
+Codex planner가 만든 approval preview를 pending queue에 저장하고,
+사용자가 명시적으로 승인/거절한 request만 approved/rejected queue로 이동한다.
+이번 단계의 runner 검증은 --dry-run만 사용한다.
+```
+
+정책:
+
+- agent/debug loop는 approve/reject 명령을 자동 호출하지 않는다.
+- approve는 request id와 confirm-request-id가 같아야 한다.
+- approved request에는 `approvalMethod`, `approvedBy`, `approvedAt`이 필요하다.
+- rejected request는 runner 대상이 아니다.
+- critical risk는 approved 폴더에 있어도 runner가 거부한다.
+- Telegram은 템플릿만 제공하고 실제 token/chat id는 repo에 저장하지 않는다.
+
+검증:
+
+```text
+voice_planner.py --write-approval -> pending JSON 생성
+approval_queue.py approve -> approved JSON 생성
+e2e_approved_runner.py --dry-run -> 실행 없이 command preview
+wrong confirm id -> approve 실패
+payloadHash mismatch -> runner 거부
+critical approved request -> runner 거부
 ```
 
 검증 케이스:

@@ -34,6 +34,7 @@ BROWSER_ACTIONS = {
     "browser_interact",
 }
 DENIED_RISK_TIERS = {"critical"}
+DISPATCHER_APPROVAL_METHODS = {"voice", "telegram", "manual"}
 
 
 def now_iso() -> str:
@@ -143,7 +144,19 @@ def assert_payload_hash(request: dict) -> None:
 
 
 def validate_request(request: dict) -> None:
-    for key in ("version", "requestId", "source", "riskTier", "action", "params", "payloadHash", "status"):
+    for key in (
+        "version",
+        "requestId",
+        "source",
+        "riskTier",
+        "action",
+        "params",
+        "payloadHash",
+        "status",
+        "approvalMethod",
+        "approvedBy",
+        "approvedAt",
+    ):
         if key not in request:
             raise ValueError(f"missing required field: {key}")
     if request["version"] != 1:
@@ -160,11 +173,16 @@ def validate_request(request: dict) -> None:
     assert_payload_hash(request)
 
 
+def dispatcher_approval_method(request: dict) -> str:
+    method = str(request.get("approvalMethod", "manual"))
+    return method if method in DISPATCHER_APPROVAL_METHODS else "manual"
+
+
 def approved_dispatcher_payload(request: dict) -> dict:
     return {
         **canonical_payload(request),
         "approvedByUser": True,
-        "approvalMethod": "manual",
+        "approvalMethod": dispatcher_approval_method(request),
         "payloadHash": request["payloadHash"],
     }
 

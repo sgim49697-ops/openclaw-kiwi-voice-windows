@@ -1185,8 +1185,9 @@ task check 통과 또는 task CLI 미설치 시 개별 validator 통과
 - [x] v7.2 diagnostic archive: Web Microphone/STT/wake/command 진단 기록 정리
 - [x] v7.2.15 Kiwi live dry-run 안정화: notify/cancel/critical smoke 통과
 - [x] v7.3.1 Codex OAuth voice planner dry-run bridge
+- [x] v7.4 manual/local external approval gate contract
 - [ ] owner voice 등록
-- [ ] Telegram/manual approval 연결
+- [ ] Telegram approval 연결
 - [ ] Gateway v4 WebSocket 호환 또는 CLI fallback 유지 결정
 
 완료 기준:
@@ -1198,6 +1199,8 @@ planner output이 schemas/voice-planner-output.schema.json을 통과함
 “오픈클로, 테스트 알림 보내줘” → planner가 notify approval plan 생성
 “오픈클로 취소” → planner가 cancel 판단
 critical/high risk는 planner 판단 후에도 post-planner approval 없이는 실행 안 됨
+approval_queue.py로 pending -> approved/rejected 상태 전이 가능
+e2e_approved_runner.py --dry-run으로 approved request 검증 가능
 ```
 
 ### Phase 7 — 관측/확장
@@ -1547,7 +1550,21 @@ v7.3.1 구현 결과:
 - voice_planner_probe.py live Codex planner cases 통과
 - kiwi_live_dry_run_probe.py --skip-env-check 통과
 - 실제 dispatcher/OpenClaw agent/browser/node action 실행 없음
-- 다음 gate는 v7.4 owner voice + Telegram/manual approval
+- 다음 gate는 v7.4 external approval gate
+```
+
+v7.4 external approval gate 결과:
+
+```text
+- approval_queue.py가 queue/show/status/approve/reject 지원
+- approve는 method, actor, confirm-request-id가 모두 필요
+- approved JSON은 approvalMethod, approvedBy, approvedAt 기록
+- rejected JSON은 rejectedBy, rejectedAt 기록
+- e2e_approved_runner.py는 approved metadata와 payloadHash를 검증
+- critical approved request는 계속 거부
+- Telegram은 templates/telegram/approval.env.example 템플릿만 추가
+- 실제 dispatcher/browser live execution 없음
+- 다음 gate는 v7.5 approved execution smoke
 ```
 
 정책 변경 전:
