@@ -18,12 +18,12 @@ tasks:
   schema:validate:
     desc: Validate local JSON schema guards.
     cmds:
-      - python3 tests/policy/validate_schemas.py schemas/approval-request.schema.json schemas/openclaw-action-request.schema.json || python tests/policy/validate_schemas.py schemas/approval-request.schema.json schemas/openclaw-action-request.schema.json
+      - python3 tests/policy/validate_schemas.py schemas/approval-request.schema.json schemas/openclaw-action-request.schema.json schemas/voice-planner-output.schema.json || python tests/policy/validate_schemas.py schemas/approval-request.schema.json schemas/openclaw-action-request.schema.json schemas/voice-planner-output.schema.json
 
   eval:intents:
     desc: Run voice intent and risk evals when promptfoo config exists.
     cmds:
-      - 'echo "eval:intents skeleton ready at evals/promptfooconfig.yaml; install promptfoo before running real evals"'
+      - 'echo "eval:intents skeleton ready at evals/promptfooconfig.yaml and evals/voice-planner-cases.yaml; install promptfoo before running real evals"'
 
   test:browser:
     desc: Run browser permission smoke tests when Playwright tests exist.

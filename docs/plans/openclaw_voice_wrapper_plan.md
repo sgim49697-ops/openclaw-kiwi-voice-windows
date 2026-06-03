@@ -1184,18 +1184,20 @@ task check 통과 또는 task CLI 미설치 시 개별 validator 통과
 - [x] v7.2 live transcript dry-run OpenClaw shim 추가
 - [x] v7.2 diagnostic archive: Web Microphone/STT/wake/command 진단 기록 정리
 - [x] v7.2.15 Kiwi live dry-run 안정화: notify/cancel/critical smoke 통과
+- [ ] v7.3 Codex OAuth voice planner contract
 - [ ] owner voice 등록
-- [ ] Telegram approval 연결
+- [ ] Telegram/manual approval 연결
 - [ ] Gateway v4 WebSocket 호환 또는 CLI fallback 유지 결정
 
 완료 기준:
 
 ```text
-voice_e2e_probe.py로 notify/Codex/browser/cancel/critical deny dry-run 통과
 kiwi_windows_probe.py에서 ready 상태 확인
-“오픈클로, 테스트 알림 보내줘” → 계획 → 확인 → 알림
-“취소” → 실행 안 됨
-타인 목소리 medium/high 실행 차단
+STT transcript가 Codex OAuth planner로 먼저 전달됨
+planner output이 schemas/voice-planner-output.schema.json을 통과함
+“오픈클로, 테스트 알림 보내줘” → planner가 notify approval plan 생성
+“오픈클로 취소” → planner가 cancel 판단
+critical/high risk는 planner 판단 후에도 post-planner approval 없이는 실행 안 됨
 ```
 
 ### Phase 7 — 관측/확장
@@ -1268,7 +1270,7 @@ v7.2 diagnostic archive:
 ```text
 - 아래 v7.2.2~v7.2.14 기록은 현재 실행 계획이 아니라 과거 진단 로그다.
 - 다음 작업자는 이 블록의 "다음 gate" 문장을 진행 기준으로 삼지 않는다.
-- 현재 기준은 v7.2.15 live dry-run stabilization 통과와 v7.3 owner voice + Telegram approval 준비다.
+- 현재 기준은 v7.2.15 live dry-run stabilization 통과와 v7.3 Codex OAuth voice planner contract 준비다.
 ```
 
 v7.2.2 진단 체크:
@@ -1509,15 +1511,33 @@ v7.2.15 Kiwi live dry-run 안정화 결과:
 - local listener.py는 ListenerConfig.wake_word를 WakeWordDetector에 우선 적용
 - local text_processing.py는 "보내", "삭제", "결제" 등 한국어 짧은 명령/critical marker를 complete phrase로 처리
 - local openclaw_cli.py는 dry-run shim 사용 시 첫 system prompt를 제거하고 실제 transcript command만 전달
-- repo classifier는 critical marker를 cancel보다 먼저 deny하고, STT cancel alias "치소"를 cancel로 처리
+- repo classifier는 v7.2 archive 기준으로 critical marker를 cancel보다 먼저 deny하고, STT cancel alias "치소"를 cancel로 처리
 - notify live smoke: windows_wrapper/notify approval preview only, wouldExecute=false, payloadHash present
 - cancel live smoke: control/cancel, approvalRequest=null, wouldExecute=false
 - critical live smoke: deny/critical, approvalRequest=null, wouldExecute=false
 - Web Microphone 종료 후 Kiwi API는 state=listening, is_processing=false, web_audio_clients=0
 - OPENCLAW_BIN=dry-run-openclaw.cmd, KIWI_WS_ENABLED=false, Gateway approvals locked 유지
 - 실제 dispatcher/OpenClaw agent/browser/node 실행 없음
-- 다음 gate는 v7.3 owner voice + Telegram approval 준비
+- 다음 gate는 v7.3 Codex OAuth voice planner contract
 ```
+
+v7.3 Codex OAuth voice planner 기준:
+
+```text
+Kiwi wake/STT/speaker
+→ transcript
+→ Codex OAuth planner
+→ voice-planner-output schema 검증
+→ post-planner policy / approval / dispatcher validation
+→ 승인된 작업만 실행
+```
+
+- `취소`, 결제, Gmail, 비밀번호, 삭제, raw shell 문장도 planner에 먼저 보낸다.
+- deterministic pre-guard는 기본 경로에서 제거하고, 기존 classifier는 legacy fallback으로만 둔다.
+- planner decision은 `cancel`, `deny`, `clarify`, `request_approval` 중 하나다.
+- planner lane은 `none`, `windows_wrapper`, `browser_read`, `browser_interact`, `codex_plan` 중 하나다.
+- dry-run planner output은 항상 `wouldExecute=false`다.
+- high/critical risk는 planner가 허용해도 fresh external approval 없이는 실행하지 않는다.
 
 정책 변경 전:
 

@@ -24,7 +24,7 @@
 | v4 | 브라우저 read 자동화 | 격리 `openclaw` 프로필, snapshot/screenshot | 안전 페이지 읽기와 스크린샷 성공 |
 | v5 | 브라우저 interact 자동화 | click/type/fill/select 정책 | 테스트 페이지에서 클릭/입력 성공, side-effect 차단 |
 | v6 | VS Code + Codex plan 연동 | `open_vscode_codex_plan` dispatcher action | read-only `/plan` 실행 성공 |
-| v7 | Kiwi Voice 통합 | voice dry-run 계약, Windows native Kiwi, speaker ID, Telegram approval | 음성 호출이 planner 승인 흐름까지 도달 |
+| v7 | Kiwi Voice 통합 | voice dry-run 계약, Windows native Kiwi, Codex OAuth planner, speaker ID, Telegram approval | 음성 호출이 Codex planner 승인 흐름까지 도달 |
 | v8 | 운영 안정화 | 로그/백업/롤백/정책 문서화 | end-to-end smoke test와 롤백 절차 확인 |
 
 ## 현재 진행 상태 - 2026-06-03
@@ -96,7 +96,7 @@ Kiwi v7.2 final:
   - local Kiwi backup: C:\Users\ksg63\projects\kiwi-voice\backups\openclaw-kiwi-voice-windows\v7.2.15-20260603-143626
   - local Kiwi 실제 내용 변경은 11개 파일 수준이며, `git status`의 대량 modified 표시는 대부분 Windows/WSL line-ending 노이즈로 본다.
   - 상세 진단 로그는 `docs/plans/openclaw_voice_debug_loop_plan.md`의 v7.2 archive를 참조한다.
-  - next gate: v7.3 owner voice + Telegram approval preparation
+  - next gate: v7.3 Codex OAuth Voice Planner Contract
 ```
 
 현재 Node는 `system.run`, `system.run.prepare`, `system.which`, `screen.snapshot`, `camera.list`,
@@ -937,8 +937,67 @@ Gateway approvals: allowlist + ask=always + askFallback=deny + autoAllowSkills=o
 
 다음:
 
-- owner voice 등록과 Telegram approval 경로를 v7.3에서 준비한다.
+- v7.3에서는 owner voice/Telegram보다 먼저 Codex OAuth planner contract를 고정한다.
 - dispatcher live execution은 approval-layer gate 이후로 유지한다.
+
+### v7.3 - Codex OAuth Voice Planner Contract
+
+```text
+상태: 계획 수정 완료, 구현 대기
+범위: 문서 + schema/spec, dry-run only
+planner: /home/user/.npm-global/bin/codex exec
+execution: 없음
+```
+
+새 기본 흐름:
+
+```text
+Kiwi wake/STT/speaker
+→ STT transcript
+→ Codex OAuth voice planner
+→ planner output schema 검증
+→ post-planner policy / approval / dispatcher validation
+→ 승인된 작업만 browser lane 또는 Windows dispatcher lane으로 실행
+```
+
+v7.3부터는 `취소`, 결제, Gmail, 비밀번호, 삭제, raw shell 같은 문장도
+Codex planner로 먼저 전달한다. 기존 repo dry-run classifier의 keyword-first
+cancel/critical deny 처리는 v7.2 archive 또는 legacy fallback으로만 둔다.
+
+Planner 출력 계약:
+
+```text
+decision: cancel | deny | clarify | request_approval
+lane: none | windows_wrapper | browser_read | browser_interact | codex_plan
+riskTier: low | medium | high | critical
+action: dispatcher/browser/Codex action 또는 null
+userFacingPlan: 승인 전에 사용자에게 보여줄 짧은 계획
+approvalRequired: 실행 가능 작업은 true
+wouldExecute: dry-run에서는 항상 false
+```
+
+Codex OAuth planner 기본 호출:
+
+```bash
+/home/user/.npm-global/bin/codex exec \
+  -C /home/user/projects/openclaw-kiwi-voice-windows \
+  --sandbox read-only \
+  --output-schema schemas/voice-planner-output.schema.json \
+  "<voice planner prompt>"
+```
+
+Post-planner enforcement:
+
+- schema 불일치, 허용 action 밖 출력, approval 없는 실행은 거부한다.
+- Browser lane은 `windows-cdp` 프로필과 기존 browser permission 정책을 유지한다.
+- Windows action은 중앙 dispatcher와 payloadHash 검증을 통과해야 한다.
+- high/critical risk는 planner가 허용하더라도 fresh external approval 없이는 실행하지 않는다.
+
+v7.4 이후:
+
+- owner voice 등록
+- Telegram/manual approval 연결
+- Gateway v4 WebSocket compatibility 또는 CLI fallback 최종 결정
 
 ### Windows 설치 원칙
 

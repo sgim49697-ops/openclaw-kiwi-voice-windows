@@ -9,13 +9,20 @@ Use this skill when working on this repository's OpenClaw + Kiwi Voice local aut
 
 ## Core Workflow
 
-1. Treat Kiwi Voice as the input and approval layer, not as the executor.
-2. Produce a short plan before any voice-triggered execution.
-3. Require explicit user confirmation before execution.
-4. Route work through one of two lanes:
+1. Treat Kiwi Voice as the wake/STT/speaker input layer, not as the executor.
+2. Send every STT transcript to the Codex OAuth voice planner first.
+3. Let the Codex planner classify cancel, deny, clarify, approval, risk, lane, and action.
+4. Require explicit user confirmation before execution.
+5. Route approved work through one of three lanes:
    - Browser lane: page read, snapshot, screenshot, click, type, fill, select.
    - Windows wrapper lane: local OS or app actions through the central dispatcher.
-5. Stop before high-impact actions and request fresh confirmation.
+   - Codex plan lane: VS Code + Codex read-only planning.
+6. Stop before high-impact actions and request fresh confirmation.
+
+Do not add deterministic pre-guards that intercept cancel, critical, payment, password, email,
+delete, or raw-shell phrases before the Codex planner. Those phrases still go to the planner.
+Safety enforcement happens after planning through schema validation, action allowlists,
+approval checks, browser permissions, and dispatcher policy.
 
 ## Windows Execution Rule
 
@@ -58,13 +65,15 @@ Use the isolated `openclaw` browser profile by default. Do not use a logged-in u
 
 ## Codex Rule
 
-VS Code/Codex requests start in read-only plan mode.
+Voice planning uses the user's local Codex OAuth session in read-only mode.
 
 Use:
 
 ```text
-codex -C <project> --sandbox read-only --ask-for-approval on-request "<plan prompt>"
+/home/user/.npm-global/bin/codex exec -C <project> --sandbox read-only --output-schema schemas/voice-planner-output.schema.json "<voice planner prompt>"
 ```
+
+VS Code/Codex action requests still start as read-only plans.
 
 Do not use `danger-full-access` or `dangerously-bypass-approvals-and-sandbox`.
 

@@ -1,0 +1,87 @@
+{
+  "$comment": "voice-planner-output.schema.json - Codex OAuth voice planner dry-run output schema.",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openclaw.local/schemas/voice-planner-output.schema.json",
+  "title": "OpenClaw Voice Planner Output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "transcript",
+    "normalizedIntent",
+    "decision",
+    "lane",
+    "riskTier",
+    "action",
+    "params",
+    "reason",
+    "userFacingPlan",
+    "approvalRequired",
+    "wouldExecute"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "transcript": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000
+    },
+    "normalizedIntent": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000
+    },
+    "decision": {
+      "type": "string",
+      "enum": ["cancel", "deny", "clarify", "request_approval"]
+    },
+    "lane": {
+      "type": "string",
+      "enum": ["none", "windows_wrapper", "browser_read", "browser_interact", "codex_plan"]
+    },
+    "riskTier": {
+      "type": "string",
+      "enum": ["low", "medium", "high", "critical"]
+    },
+    "action": {
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "notify",
+            "open_url_readonly",
+            "open_vscode_codex_plan",
+            "open_app_allowlisted",
+            "run_task_recipe",
+            "browser_read",
+            "browser_interact"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "params": {
+      "type": "object"
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 2000
+    },
+    "userFacingPlan": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000
+    },
+    "approvalRequired": {
+      "type": "boolean"
+    },
+    "wouldExecute": {
+      "const": false
+    }
+  }
+}
