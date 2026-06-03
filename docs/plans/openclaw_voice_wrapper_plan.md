@@ -1182,16 +1182,7 @@ task check 통과 또는 task CLI 미설치 시 개별 validator 통과
 - [x] wake word `오픈클로` 설정
 - [x] Dashboard 확인
 - [x] v7.2 live transcript dry-run OpenClaw shim 추가
-- [~] v7.2.1 Web Microphone 연결 smoke: connected, transcript 미검출
-- [~] v7.2.2 Audio/STT/wake calibration helper 추가, mic RMS 미달 확인
-- [~] v7.2.3 Microphone input gain smoke: USB mic selected, RMS 미달
-- [~] v7.2.4 Windows native mic signal probe: native/browser 모두 RMS 미달
-- [~] v7.2.5 Windows mic signal recovery gate: 재측정 후에도 RMS 미달
-- [~] v7.2.6 Windows audio device audit: 전체 input scan에서도 RMS 미달
-- [~] v7.2.7 Known-good mic recovery: browser mic gate 통과, transcript 미도달
-- [x] v7.2.8 WebAudioBridge segment buffering fix: 1초 이상 segment 생성 확인
-- [~] v7.2.9 Whisper/STT filter tuning: Korean transcript 생성, wake phrase 미보존으로 dry-run shim 미도달
-- [~] v7.2.10 Korean wake detector fix: parser 수정 완료, live STT가 wake phrase 미인식
+- [x] v7.2 diagnostic archive: Web Microphone/STT/wake/command 진단 기록 정리
 - [x] v7.2.15 Kiwi live dry-run 안정화: notify/cancel/critical smoke 통과
 - [ ] owner voice 등록
 - [ ] Telegram approval 연결
@@ -1270,6 +1261,14 @@ assistant: 이 요청은 파일 삭제를 포함한 critical 위험 작업이라
 - Windows Node exec-policy 확인
 - Kiwi Voice 로그 확인
 - C:\OpenClawActions\logs\actions.jsonl 확인
+```
+
+v7.2 diagnostic archive:
+
+```text
+- 아래 v7.2.2~v7.2.14 기록은 현재 실행 계획이 아니라 과거 진단 로그다.
+- 다음 작업자는 이 블록의 "다음 gate" 문장을 진행 기준으로 삼지 않는다.
+- 현재 기준은 v7.2.15 live dry-run stabilization 통과와 v7.3 owner voice + Telegram approval 준비다.
 ```
 
 v7.2.2 진단 체크:
@@ -1452,6 +1451,14 @@ v7.2.12 wake-only two-step STT gate 결과:
 - 다음 gate는 alternate STT backend, constrained command grammar, browser raw/noise setting, or dedicated wake-word engine 비교
 ```
 
+v7.2 archive note:
+
+```text
+- v7.2.1~v7.2.14는 현재 실행 기준이 아니라 Web Microphone/STT/wake/command 진단 기록이다.
+- v7.2의 canonical 완료 기준은 v7.2.15 live dry-run stabilization이다.
+- 장기화의 주된 원인은 실제 마이크 응답/입력 확인이 늦어진 점과 STT gate를 세분화한 점이다.
+```
+
 v7.2.13 dialog-mode command STT 보정 결과:
 
 ```text
@@ -1490,7 +1497,7 @@ v7.2.14 fresh command STT gate 계획/구현:
 - raw capture: sampleCount=5, rmsPassedCount=2, maxRms=0.003936
 - best near miss: standard small_short_prompt constrainedCommandHits=2/5
 - 모든 후보가 pass threshold 3/5 미달이므로 local config.yaml prompt 변경 없음
-- 다음 gate는 command phrase를 더 짧게 쪼갠 dedicated command grammar 또는 alternate STT backend 비교
+- 이 결과는 v7.2.15 live dry-run 통과로 superseded되었고, 상세 진단 기록으로만 보관한다.
 ```
 
 v7.2.15 Kiwi live dry-run 안정화 결과:

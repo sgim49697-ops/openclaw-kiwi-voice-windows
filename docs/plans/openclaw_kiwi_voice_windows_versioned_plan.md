@@ -27,7 +27,7 @@
 | v7 | Kiwi Voice 통합 | voice dry-run 계약, Windows native Kiwi, speaker ID, Telegram approval | 음성 호출이 planner 승인 흐름까지 도달 |
 | v8 | 운영 안정화 | 로그/백업/롤백/정책 문서화 | end-to-end smoke test와 롤백 절차 확인 |
 
-## 현재 진행 상태 - 2026-06-02
+## 현재 진행 상태 - 2026-06-03
 
 v1 Gateway, v2 Windows Node 최소 연결, v3 dispatcher-only Windows 실행 경계는 통과 상태로 본다.
 
@@ -82,170 +82,20 @@ Kiwi v7.1 prep:
   - Gateway v4와 Kiwi Gateway v3 WebSocket mismatch 때문에 v7.1은 Windows OpenClaw CLI fallback으로 기동
   - repo-local Kiwi Windows readiness probe, config template, transcript dry-run bridge 추가
 
-Kiwi v7.2 safety:
-  - 실제 microphone 전에 Kiwi OPENCLAW_BIN을 dry-run shim으로 전환
-  - `openclaw agent --message` 형태만 transcript dry-run으로 라우팅
-  - `.debugloop/runs/kiwi-live-dry-run.jsonl`에 ignored runtime 결과 기록
-  - dispatcher, OpenClaw agent, browser, node 실행은 하지 않음
-
-Kiwi v7.2.1 web microphone smoke:
-  - dashboard Web Microphone 연결 성공
-  - `web_audio_clients` 0 → 1 → 0 확인
-  - event log `WEB_CLIENT_CONNECTED` 확인
-  - dry-run shim 로그는 증가하지 않아 STT/wake transcript 미검출로 기록
-  - 다음 단계는 audio level/STT/wake calibration
-
-Kiwi v7.2.2 audio/STT/wake calibration:
-  - dry-run shim과 `KIWI_WS_ENABLED=false`는 그대로 유지
-  - Windows Kiwi stdout/stderr capture helper 추가
-  - browser microphone RMS/peak 측정 helper 추가
-  - `/api/audio` synthetic silence/tone PCM probe 추가
-  - transcript 생성 전 실패를 browser input gain, WebAudioBridge gate, STT/wake 단계로 분리
-  - local Kiwi checkout backup 후 Silero trust prompt와 Whisper language=ru hardcode를 보정
-  - synthetic tone은 Speech segment → PROCESS → WHISPER까지 도달, detected language=ko 확인
-  - browser mic permission은 granted지만 maxRms 0.000129로 speech gate 0.015 미만
-  - 다음은 Windows input device/gain 보정 후 live transcript dry-run 재시도
-
-Kiwi v7.2.3 microphone gain smoke:
-  - preflight/gateway/node/Kiwi dry-run shim 모두 정상
-  - dashboard tab은 windows-cdp로 열림
-  - selected browser input: 마이크(USB Audio Device) (0c76:160a)
-  - permission granted, sampleRate 48000, channelCount 1
-  - 8초 발화 probe maxRms 0.00015, 1초 device-check maxRms 0.000151
-  - speech gate 0.015 미달로 live Web Microphone dry-run smoke는 중단
-  - 현 blocker는 Windows input volume/mute/device/physical mic signal
-
-Kiwi v7.2.4 Windows mic signal fix:
-  - Windows Sound settings opened for manual input device/volume check
-  - windows-cdp dedicated Chrome CDP restarted on port 9222
-  - standard browser probe maxRms 0.000141
-  - raw-audio browser probe maxRms 0.000135
-  - Windows native sounddevice probe maxRms 0.000015 on USB Audio Device
-  - multi-device native scan found no usable speech-level input
-  - live dry-run smoke was not attempted; blocker remains Windows mic hardware/driver/mute/gain/routing
-
-Kiwi v7.2.5 Windows mic signal recovery gate:
-  - preflight still clean: Kiwi ready, dry-run shim enabled, Gateway approvals locked, Windows Node connected
-  - Windows native USB Audio Device retry stayed near-silent: rms 0.000015, peak 0.000031
-  - browser standard probe maxRms 0.000086
-  - browser raw-audio probe maxRms 0.000136
-  - live dry-run smoke was not attempted; continue blocking on Windows input signal until maxRms >= 0.015
-
-Kiwi v7.2.6 Windows audio device audit:
-  - added native --scan-all and browser --scan-inputs ranking gates
-  - native best input rms 0.000015, peak 0.000031
-  - browser best input default USB mic maxRms 0.000161, maxPeak 0.000636
-  - no native/browser input reached minRms 0.015
-  - live dry-run smoke remains blocked on Windows mic hardware/driver/gain/routing
-
-Kiwi v7.2.7 known-good mic recovery:
-  - fixed native scan timeout/path handling for 5s per-device scans
-  - native best USB mic improved to rms 0.006402, peak 0.654480 but stayed below minRms 0.015
-  - browser scan passed with communications USB mic maxRms 0.047101, aboveThresholdCount 2
-  - Web Microphone connected and returned to web_audio_clients=0 after smoke
-  - dry-run shim log did not increase; Kiwi split live speech into mostly 0.2s-0.3s segments that Whisper skipped as too short
-  - next blocker is WebAudioBridge segment buffering/minimum duration, not basic mic signal
-
-Kiwi v7.2.8 WebAudioBridge buffering fix:
-  - local Kiwi checkout was backed up at C:\Users\ksg63\projects\kiwi-voice\backups\openclaw-kiwi-voice-windows\v7.2.8-20260602-234624
-  - patched local audio_bridge.py to use duration-based submit criteria
-  - config_loader.py now reads web_audio min/end/threshold/max duration tuning fields
-  - local config.yaml sets min_submit_seconds 1.0 and end_silence_seconds 0.8
-  - tests\test_audio_bridge.py passed 10 tests after uv pip pytest install in the local venv
-  - browser mic scan passed again with default USB mic maxRms 0.037766, aboveThresholdCount 7
-  - synthetic WebAudio produced a 2.0s segment; dashboard Web Microphone produced a 1.7s segment
-  - dry-run JSONL did not increase and no real OpenClaw/dispatcher action executed
-  - next blocker is Whisper hallucination/STT tuning, not WebAudio segment length
-
-Kiwi v7.2.9 Whisper/STT filter tuning:
-  - local Kiwi checkout was backed up at C:\Users\ksg63\projects\kiwi-voice\backups\openclaw-kiwi-voice-windows\v7.2.9-20260603-000808
-  - config_loader.py/listener.py/service.py now carry config-based Whisper no_speech, avg_logprob, timestamp, and prompt tuning
-  - tests\test_config.py tests\test_smoke.py tests\test_listener_whisper_filter.py passed 23 tests
-  - browser mic scan passed with USB mic maxRms 0.018282, aboveThresholdCount 1
-  - WebAudio produced 1.2s-3.1s live segments and Whisper produced Korean transcript
-  - one segment recognized "테스트 알림 보내줘.", but the wake phrase "오픈클로" was not preserved
-  - live transcript did not reach the dry-run shim because Kiwi remained in wake-word-required idle mode
-  - no dispatcher/OpenClaw real agent/browser/node action executed
-  - next blocker is wake phrase/STT prompt calibration, not WebAudio duration or basic Korean STT
-
-Kiwi v7.2.10 Korean wake detector fix:
-  - local Kiwi checkout was backed up at C:\Users\ksg63\projects\kiwi-voice\backups\openclaw-kiwi-voice-windows\v7.2.10-20260603-005444
-  - WakeWordDetector now preserves configured Unicode wake words instead of falling back to `киви`
-  - Korean wake aliases supported: `오픈클로`, `오픈 클로`, `오픈클로우`, `오픈 클로우`
-  - Korean command text is accepted by Unicode command validation
-  - tests\test_config.py tests\test_smoke.py tests\test_listener_whisper_filter.py tests\test_wake_word_detector.py passed 28 tests
-  - browser mic scan passed with USB mic maxRms 0.018143, aboveThresholdCount 2
-  - live Web Microphone still did not reach dry-run shim because faster-whisper small produced unrelated Korean hallucinations instead of the wake phrase
-  - background debug_forever dry-run probes explain JSONL line increases during the smoke
-  - next blocker is STT model/backend comparison or two-step wake-only flow, not wake detector parsing
-
-Kiwi v7.2.11 STT model comparison:
-  - STT capture/eval probes were added and committed in 6c9fae0
-  - native Windows sounddevice capture remained near-silent, so browser CDP WAV samples were used for the main comparison
-  - browser sample set: .debugloop/artifacts/kiwi/stt-samples-v7.2.11-browser/
-  - selected audio track: 커뮤니케이션 - 마이크(USB Audio Device) (0c76:160a)
-  - sample 3 passed the speech gate with rms=0.016593, peak=0.582132, aboveThresholdCount=1
-  - eval artifact: .debugloop/artifacts/kiwi/stt-eval-v7.2.11.json
-  - faster-whisper small + prompt "오픈클로": wakeHits=3/3, commandHits=0, selected candidate
-  - faster-whisper small without prompt: blocked by unrelated/hallucinated Korean phrases
-  - faster-whisper medium + prompt "오픈클로": wakeHits=2/3 but still hallucinated and did not recover the command
-  - local config already matched selected model/prompt, so no Windows Kiwi config change was needed
-  - direct notify dry-run smoke remains blocked until a two-step wake flow or alternate STT/backend can preserve the command body
-  - no dispatcher/OpenClaw real agent/browser/node action executed
-
-Kiwi v7.2.12 wake-only two-step STT gate:
-  - local Kiwi checkout was backed up at C:\Users\ksg63\projects\kiwi-voice\backups\openclaw-kiwi-voice-windows\v7.2.12-20260603-102900
-  - config_loader.py/service.py now pass wake_word.dialog_timeout_seconds to KiwiListener
-  - local config.yaml sets wake_word.dialog_timeout_seconds=8.0
-  - Windows Kiwi tests passed: 29 tests
-  - repo helper added: scripts/wsl/kiwi_two_step_stt_gate.py and Taskfile recipe kiwi:two-step-stt-gate
-  - two-step artifacts: .debugloop/artifacts/kiwi/two-step-v7.2.12/
-  - wake-only gate passed minimally with current config: wakeHits=1/3
-  - command-only gate failed: "테스트 알림 보내줘" commandHits=0/3
-  - all command captures crossed the browser RMS gate, so the blocker is STT recognition rather than microphone signal
-  - live dry-run smoke was skipped because liveReady=false
-  - no dispatcher/OpenClaw real agent/browser/node action executed
-
-Kiwi v7.2.13 dialog-mode command STT gate:
-  - local Kiwi checkout was backed up at C:\Users\ksg63\projects\kiwi-voice\backups\openclaw-kiwi-voice-windows\v7.2.13-20260603-104809
-  - listener.py now chooses a wake prompt for wake detection and a command prompt for speech that started in dialog mode
-  - config_loader.py/service.py/config.yaml now carry stt.whisper_dialog_prompt
-  - templates/kiwi/config.yaml.template now includes dialog timeout, Whisper filters, web_audio buffering, and wake/dialog prompts
-  - repo STT eval now includes small_dialog_prompt_commands and records constrained dry-run routes
-  - constrained route only maps low-risk notify when "테스트"+"알림"+"보내/전송" are present and rejects critical/hallucination markers
-  - Windows Kiwi tests passed: 31 tests
-  - existing v7.2.12 command WAVs still do not pass the stable notify gate: commandHits=0/3, constrainedCommandHits=0/3
-  - live smoke remains skipped until offline command gate passes
-  - no dispatcher/OpenClaw real agent/browser/node action executed
-
-Kiwi v7.2.14 fresh command STT gate:
-  - repo helper added: scripts/wsl/kiwi_command_stt_gate.py and Taskfile recipe kiwi:command-stt-gate
-  - artifact path: .debugloop/artifacts/kiwi/command-stt-v7.2.14/
-  - planned capture modes: standard browser audio and raw-audio browser constraints
-  - each mode captures 5 command-only samples of "테스트 알림 보내줘"
-  - conservative pass threshold: commandHits>=3/5 or constrainedCommandHits>=3/5
-  - hallucination marker >=2 or any critical marker blocks a candidate
-  - small candidates are evaluated first, medium_notify_prompt only if small candidates fail
-  - executed result: blocked, liveReady=false
-  - standard capture: sampleCount=5, rmsPassedCount=1, maxRms=0.004926
-  - raw capture: sampleCount=5, rmsPassedCount=2, maxRms=0.003936
-  - best near miss: standard small_short_prompt constrainedCommandHits=2/5
-  - no local config.yaml prompt update was applied
-  - live smoke remains skipped until a future offline command gate passes
-
-Kiwi v7.2.15 live dry-run stabilization:
-  - session-local Kiwi fixes made the live dry-run path usable enough to pass notify/cancel/critical smoke
-  - local backup: C:\Users\ksg63\projects\kiwi-voice\backups\openclaw-kiwi-voice-windows\v7.2.15-20260603-143626
-  - local config.yaml keeps stt.whisper_dialog_prompt: "테스트 알림 보내줘"
-  - local listener.py keeps ListenerConfig.wake_word priority for WakeWordDetector
-  - local text_processing.py treats Korean short command/critical markers such as "보내", "삭제", "결제" as complete phrases
-  - local openclaw_cli.py removes the initial system prompt when OPENCLAW_BIN points to the dry-run shim
-  - repo dry-run classifier now checks critical markers before cancel and accepts the STT cancel alias "치소"
-  - live notify: windows_wrapper/notify approval preview only, wouldExecute=false, payloadHash present
-  - live cancel: control/cancel, approvalRequest=null, wouldExecute=false
-  - live critical: deny/critical, approvalRequest=null, wouldExecute=false
-  - Web Microphone closed cleanly and Kiwi returned to listening with web_audio_clients=0
-  - no dispatcher/OpenClaw agent/browser/node live action executed
+Kiwi v7.2 final:
+  - canonical 기준은 v7.2.15 live dry-run stabilization이다.
+  - v7.2.1~v7.2.14는 Web Microphone/STT/wake/command 인식 진단 로그로 아카이브한다.
+  - 장기화의 주된 원인은 사용자의 실제 마이크 응답/입력 신호 확인이 늦어진 점과 STT prompt/gate를 과하게 세분화한 점이다.
+  - 실제 microphone 전에 Kiwi `OPENCLAW_BIN`은 dry-run shim으로 전환했고 `KIWI_WS_ENABLED=false`를 유지했다.
+  - `openclaw agent --message` 형태만 transcript dry-run으로 라우팅했다.
+  - dispatcher, OpenClaw real agent, browser, node live execution은 수행하지 않았다.
+  - live notify는 `windows_wrapper/notify`, `wouldExecute=false`, `payloadHash` 포함 approval preview로 통과했다.
+  - live cancel은 `control/cancel`, `approvalRequest=null`, `wouldExecute=false`로 통과했다.
+  - live critical은 `deny/critical`, `approvalRequest=null`, `wouldExecute=false`로 통과했다.
+  - Web Microphone 종료 후 Kiwi API는 `state=listening`, `is_processing=false`, `web_audio_clients=0`으로 복귀했다.
+  - local Kiwi backup: C:\Users\ksg63\projects\kiwi-voice\backups\openclaw-kiwi-voice-windows\v7.2.15-20260603-143626
+  - local Kiwi 실제 내용 변경은 11개 파일 수준이며, `git status`의 대량 modified 표시는 대부분 Windows/WSL line-ending 노이즈로 본다.
+  - 상세 진단 로그는 `docs/plans/openclaw_voice_debug_loop_plan.md`의 v7.2 archive를 참조한다.
   - next gate: v7.3 owner voice + Telegram approval preparation
 ```
 
@@ -1052,13 +902,13 @@ OpenClaw approvals / dispatcher / Node policy: unchanged
 - live command did not reach dry-run shim; JSONL increases came from background `debug_forever` dry-run probes.
 - 종료 후 `web_audio_clients=0`으로 복귀했다.
 
-다음:
+Archive note:
 
 - v7.2.11에서 STT model/backend를 비교한다.
 - v7.2.11 결과, `small + "오픈클로"` prompt가 wake phrase는 3/3 인식했지만 command body는 0/3이었다.
 - v7.2.12 결과, wake-only two-step flow도 command-only STT가 `테스트 알림 보내줘`를 0/3으로 놓쳐 blocked다.
-- 다음은 v7.2.13에서 alternate STT backend, constrained command grammar, browser raw/noise setting, or dedicated wake-word engine을 비교한다.
-- v7.2.15에서 세션 내 로컬 Kiwi 보정값을 고정하고 notify/cancel/critical live dry-run smoke를 통과했다.
+- v7.2.13~v7.2.14의 STT/command gate 비교는 진단 기록으로 보관한다.
+- v7.2.15가 이 구간을 supersede하며, 세션 내 로컬 Kiwi 보정값을 고정하고 notify/cancel/critical live dry-run smoke를 통과했다.
 
 ### v7.2.15 - Live dry-run stabilization
 

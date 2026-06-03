@@ -1,9 +1,30 @@
 # OpenClaw + Kiwi Voice 자동 디버깅 루프 계획서
 
 생성일: 2026-06-01
-수정 기준: 2026-06-01 현재 repo 구현, OpenClaw exec approvals/node/browser 최신 문서 확인 결과
+수정 기준: 2026-06-03 현재 repo 구현, OpenClaw exec approvals/node/browser/Kiwi dry-run 확인 결과
 대상 프로젝트: `openclaw-kiwi-voice-windows`
 목표: 구현 중에도 agent가 계속 상태를 확인하고 작은 수정과 검증을 반복하되, 실제 실행/배포/권한 상승은 외부 승인 신호가 있어야만 진행한다.
+
+---
+
+## Current Status
+
+```text
+현재 canonical 기준: v7.2.15 Kiwi live dry-run stabilization
+v7.2.1~v7.2.14: microphone/STT/wake/command 진단 archive
+repo 상태: main...origin/main clean
+Gateway approvals: allowlist + ask=always + askFallback=deny + autoAllowSkills=off
+Kiwi runtime: OPENCLAW_BIN=dry-run-openclaw.cmd, KIWI_WS_ENABLED=false
+Live dry-run: notify/cancel/critical 통과
+실제 실행: dispatcher/OpenClaw real agent/browser/node live action 없음
+다음 gate: v7.3 owner voice + Telegram approval
+```
+
+정리 기준:
+
+- v7.2가 길어진 핵심 이유는 사용자의 실제 마이크 응답/입력 신호 확인이 늦어진 점과 STT 진단을 지나치게 잘게 나눈 점이다.
+- 상세 기록은 삭제하지 않고 아래 v7.2 archive에 보관한다.
+- 새 작업자는 v7.2.1~v7.2.14를 재실행 기준으로 보지 말고, v7.2.15 결과와 v7.3 계획을 기준으로 진행한다.
 
 ---
 
@@ -1204,9 +1225,11 @@ approved runner는 성공한 request마다 `.debugloop/runs/e2e-approved-execute
 - external approval 기반 voice approved run
 ```
 
-현재 Kiwi voice gate:
+v7.2 archive - Kiwi voice gate investigation:
 
 ```text
+- 이 블록은 재실행 계획이 아니라 v7.2.1~v7.2.15 진단 기록 요약이다.
+- 다음 작업 기준은 v7.2.15 통과 상태와 v7.3 owner voice + Telegram approval 준비다.
 - v7.2.13은 live execution이 아니라 dialog-mode command STT 보정 단계
 - Windows Kiwi local listener는 wake prompt와 dialog command prompt를 분리
 - repo STT eval은 constrained low-risk dry-run route를 기록하되, critical/hallucination marker는 통과시키지 않음
