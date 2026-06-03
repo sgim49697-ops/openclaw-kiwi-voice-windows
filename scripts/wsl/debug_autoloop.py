@@ -378,7 +378,7 @@ def base_specs(files: Sequence[Path], include_browser_probe: bool) -> list[Comma
                         "--transcript",
                         transcript,
                     ],
-                    timeout=20,
+                    timeout=90,
                     source="kiwi-dry-run",
                 )
             )
