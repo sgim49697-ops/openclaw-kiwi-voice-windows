@@ -38,6 +38,13 @@ DISPATCHER_APPROVAL_METHODS = {"voice", "telegram", "manual"}
 LIVE_ACTIONS = {"notify", "browser_read"}
 LIVE_APPROVAL_METHODS = {"manual", "telegram"}
 LIVE_RISK_TIERS = {"low"}
+BROWSER_READ_ALLOWED_HOSTS = {
+    "docs.openclaw.ai",
+    "docs.kiwi-voice.com",
+}
+BROWSER_READ_ROOT_ONLY_HOSTS = {
+    "example.com",
+}
 
 
 def now_iso() -> str:
@@ -192,20 +199,21 @@ def validate_live_request(request: dict, confirm_request_id: str | None) -> None
     if confirm_request_id != request_id:
         raise ValueError("confirm-request-id must match request-id")
     if request.get("action") not in LIVE_ACTIONS:
-        raise ValueError("v7.5.1 live execution is limited to notify and browser_read")
+        raise ValueError("v7.5.2 live execution is limited to notify and browser_read")
     if request.get("riskTier") not in LIVE_RISK_TIERS:
-        raise ValueError("v7.5.1 live execution requires low risk")
+        raise ValueError("v7.5.2 live execution requires low risk")
     if request.get("approvalMethod") not in LIVE_APPROVAL_METHODS:
-        raise ValueError("v7.5.1 live execution requires manual or telegram approval")
+        raise ValueError("v7.5.2 live execution requires manual or telegram approval")
     if request.get("action") == "browser_read":
         params = request.get("params")
         if not isinstance(params, dict):
             raise ValueError("browser_read params must be an object")
         if params.get("profile") != DEFAULT_BROWSER_PROFILE:
-            raise ValueError(f"v7.5.1 browser live requires profile={DEFAULT_BROWSER_PROFILE}")
+            raise ValueError(f"v7.5.2 browser live requires profile={DEFAULT_BROWSER_PROFILE}")
         url = safe_url(str(params.get("url", DEFAULT_BROWSER_URL)))
-        if not is_default_browser_url(url):
-            raise ValueError(f"v7.5.1 browser live requires url={DEFAULT_BROWSER_URL}")
+        if not is_browser_read_allowed_url(url):
+            allowed = ", ".join(sorted(BROWSER_READ_ALLOWED_HOSTS | BROWSER_READ_ROOT_ONLY_HOSTS))
+            raise ValueError(f"v7.5.2 browser live URL is not allowlisted: {allowed}")
 
 
 def dispatcher_approval_method(request: dict) -> str:
@@ -231,20 +239,24 @@ def safe_url(value: str) -> str:
     parsed = urlparse(value)
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
         raise ValueError("browser URL must be http or https")
+    if parsed.username or parsed.password:
+        raise ValueError("browser URL must not include credentials")
     return value
 
 
-def is_default_browser_url(value: str) -> bool:
+def is_browser_read_allowed_url(value: str) -> bool:
     parsed = urlparse(value)
-    default = urlparse(DEFAULT_BROWSER_URL)
-    return (
-        parsed.scheme == default.scheme
-        and parsed.netloc.lower() == default.netloc.lower()
-        and parsed.path.rstrip("/") == default.path.rstrip("/")
-        and not parsed.params
-        and not parsed.query
-        and not parsed.fragment
-    )
+    hostname = (parsed.hostname or "").lower()
+    path = parsed.path or "/"
+    if parsed.scheme != "https":
+        return False
+    if parsed.port not in {None, 443}:
+        return False
+    if parsed.username or parsed.password or parsed.params or parsed.query or parsed.fragment:
+        return False
+    if hostname in BROWSER_READ_ROOT_ONLY_HOSTS:
+        return path.rstrip("/") == ""
+    return hostname in BROWSER_READ_ALLOWED_HOSTS
 
 
 def browser_command(profile: str, *args: str) -> list[str]:
