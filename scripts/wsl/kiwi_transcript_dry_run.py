@@ -1,4 +1,4 @@
-# kiwi_transcript_dry_run.py - route Kiwi STT transcript text through voice dry-run.
+# kiwi_transcript_dry_run.py - route Kiwi STT transcript through Codex planner dry-run.
 from __future__ import annotations
 
 import argparse
@@ -8,6 +8,7 @@ from argparse import Namespace
 from typing import Sequence
 
 from e2e_dry_run import DEFAULT_PROJECT_PATH, build_preview, write_approval_request
+from voice_planner import main as planner_main
 
 
 def parse_args(argv: Sequence[str]) -> argparse.Namespace:
@@ -16,11 +17,20 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser.add_argument("--project-path", default=DEFAULT_PROJECT_PATH)
     parser.add_argument("--request-id", help="Stable request id for approval request previews.")
     parser.add_argument("--write-approval", action="store_true", help="Write a pending dispatcher approval request.")
+    parser.add_argument("--legacy-classifier", action="store_true", help="Use the archived keyword classifier instead of Codex planner.")
     return parser.parse_args(argv)
 
 
 def main(argv: Sequence[str]) -> int:
     args = parse_args(argv)
+    if not args.legacy_classifier:
+        planner_args = ["--transcript", args.transcript, "--project-path", args.project_path]
+        if args.request_id:
+            planner_args.extend(["--request-id", args.request_id])
+        if args.write_approval:
+            planner_args.append("--write-approval")
+        return planner_main(planner_args)
+
     preview_args = Namespace(
         intent=args.transcript,
         mode="voice",

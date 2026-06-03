@@ -1184,7 +1184,7 @@ task check 통과 또는 task CLI 미설치 시 개별 validator 통과
 - [x] v7.2 live transcript dry-run OpenClaw shim 추가
 - [x] v7.2 diagnostic archive: Web Microphone/STT/wake/command 진단 기록 정리
 - [x] v7.2.15 Kiwi live dry-run 안정화: notify/cancel/critical smoke 통과
-- [ ] v7.3 Codex OAuth voice planner contract
+- [x] v7.3.1 Codex OAuth voice planner dry-run bridge
 - [ ] owner voice 등록
 - [ ] Telegram/manual approval 연결
 - [ ] Gateway v4 WebSocket 호환 또는 CLI fallback 유지 결정
@@ -1538,6 +1538,17 @@ Kiwi wake/STT/speaker
 - planner lane은 `none`, `windows_wrapper`, `browser_read`, `browser_interact`, `codex_plan` 중 하나다.
 - dry-run planner output은 항상 `wouldExecute=false`다.
 - high/critical risk는 planner가 허용해도 fresh external approval 없이는 실행하지 않는다.
+
+v7.3.1 구현 결과:
+
+```text
+- 기본 voice/Kiwi transcript dry-run은 Codex OAuth planner를 사용
+- `--legacy-classifier`를 줄 때만 v7.2 keyword classifier 사용
+- voice_planner_probe.py live Codex planner cases 통과
+- kiwi_live_dry_run_probe.py --skip-env-check 통과
+- 실제 dispatcher/OpenClaw agent/browser/node action 실행 없음
+- 다음 gate는 v7.4 owner voice + Telegram/manual approval
+```
 
 정책 변경 전:
 

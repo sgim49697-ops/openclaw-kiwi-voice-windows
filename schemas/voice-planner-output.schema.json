@@ -21,6 +21,7 @@
   ],
   "properties": {
     "version": {
+      "type": "integer",
       "const": 1
     },
     "transcript": {
@@ -46,26 +47,61 @@
       "enum": ["low", "medium", "high", "critical"]
     },
     "action": {
-      "oneOf": [
-        {
-          "type": "string",
-          "enum": [
-            "notify",
-            "open_url_readonly",
-            "open_vscode_codex_plan",
-            "open_app_allowlisted",
-            "run_task_recipe",
-            "browser_read",
-            "browser_interact"
-          ]
-        },
-        {
-          "type": "null"
-        }
+      "type": ["string", "null"],
+      "enum": [
+        "notify",
+        "open_url_readonly",
+        "open_vscode_codex_plan",
+        "open_app_allowlisted",
+        "run_task_recipe",
+        "browser_read",
+        "browser_interact",
+        null
       ]
     },
     "params": {
-      "type": "object"
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "title",
+        "body",
+        "projectPath",
+        "task",
+        "utterance",
+        "profile",
+        "url",
+        "recipe",
+        "appId"
+      ],
+      "properties": {
+        "title": {
+          "type": ["string", "null"]
+        },
+        "body": {
+          "type": ["string", "null"]
+        },
+        "projectPath": {
+          "type": ["string", "null"]
+        },
+        "task": {
+          "type": ["string", "null"]
+        },
+        "utterance": {
+          "type": ["string", "null"]
+        },
+        "profile": {
+          "type": ["string", "null"]
+        },
+        "url": {
+          "type": ["string", "null"]
+        },
+        "recipe": {
+          "type": ["string", "null"]
+        },
+        "appId": {
+          "type": ["string", "null"]
+        }
+      }
     },
     "reason": {
       "type": "string",
@@ -81,6 +117,7 @@
       "type": "boolean"
     },
     "wouldExecute": {
+      "type": "boolean",
       "const": false
     }
   }

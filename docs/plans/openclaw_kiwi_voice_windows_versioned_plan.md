@@ -97,6 +97,15 @@ Kiwi v7.2 final:
   - local Kiwi 실제 내용 변경은 11개 파일 수준이며, `git status`의 대량 modified 표시는 대부분 Windows/WSL line-ending 노이즈로 본다.
   - 상세 진단 로그는 `docs/plans/openclaw_voice_debug_loop_plan.md`의 v7.2 archive를 참조한다.
   - next gate: v7.3 Codex OAuth Voice Planner Contract
+
+Codex OAuth planner v7.3.1:
+  - STT transcript dry-run 기본 판단기를 Codex OAuth planner로 전환
+  - 기존 keyword-first classifier는 `--legacy-classifier` 진단 옵션으로만 유지
+  - `voice_planner.py`가 Codex `exec --sandbox read-only --output-schema`를 호출
+  - planner output schema는 OpenAI structured output subset에 맞게 `type`, `required`, `additionalProperties=false` 적용
+  - notify, cancel, critical deny, browser_read, browser_interact, prompt injection live planner probe 통과
+  - Windows Kiwi dry-run shim 경로도 Codex planner preview만 생성하고 실제 action은 실행하지 않음
+  - next gate: v7.4 owner voice + Telegram/manual approval
 ```
 
 현재 Node는 `system.run`, `system.run.prepare`, `system.which`, `screen.snapshot`, `camera.list`,
@@ -943,8 +952,8 @@ Gateway approvals: allowlist + ask=always + askFallback=deny + autoAllowSkills=o
 ### v7.3 - Codex OAuth Voice Planner Contract
 
 ```text
-상태: 계획 수정 완료, 구현 대기
-범위: 문서 + schema/spec, dry-run only
+상태: v7.3.1 통과
+범위: repo-local dry-run planner bridge
 planner: /home/user/.npm-global/bin/codex exec
 execution: 없음
 ```
@@ -992,6 +1001,15 @@ Post-planner enforcement:
 - Browser lane은 `windows-cdp` 프로필과 기존 browser permission 정책을 유지한다.
 - Windows action은 중앙 dispatcher와 payloadHash 검증을 통과해야 한다.
 - high/critical risk는 planner가 허용하더라도 fresh external approval 없이는 실행하지 않는다.
+
+v7.3.1 검증 결과:
+
+- `python3 scripts/wsl/voice_planner_probe.py` 통과
+- `python3 scripts/wsl/kiwi_live_dry_run_probe.py --skip-env-check` 통과
+- notify는 approval preview만 생성하고 `wouldExecute=false` 유지
+- cancel은 `decision=cancel`, `lane=none`, approval 없음
+- critical/prompt injection은 `decision=deny`, `riskTier=critical`, approval 없음
+- Browser read/interact는 각각 `browser_read`, `browser_interact` approval preview 생성
 
 v7.4 이후:
 

@@ -75,6 +75,16 @@ tasks:
     cmds:
       - 'python3 scripts/wsl/voice_dry_run.py --utterance "{{.INTENT | default ""}}" || python scripts/wsl/voice_dry_run.py --utterance "{{.INTENT | default ""}}"'
 
+  voice:planner:
+    desc: Preview one transcript through the Codex OAuth voice planner.
+    cmds:
+      - 'python3 scripts/wsl/voice_planner.py --transcript "{{.TRANSCRIPT | default ""}}" || python scripts/wsl/voice_planner.py --transcript "{{.TRANSCRIPT | default ""}}"'
+
+  voice:planner-probe:
+    desc: Verify the Codex OAuth voice planner contract cases.
+    cmds:
+      - python3 scripts/wsl/voice_planner_probe.py || python scripts/wsl/voice_planner_probe.py
+
   voice:e2e-probe:
     desc: Verify v7 voice dry-run routing contract without executing actions.
     cmds:

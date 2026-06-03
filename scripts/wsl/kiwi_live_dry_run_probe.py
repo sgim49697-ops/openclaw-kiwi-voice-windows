@@ -19,6 +19,7 @@ CASES: tuple[dict[str, Any], ...] = (
     {
         "id": "notify",
         "message": "오픈클로, 테스트 알림 보내줘",
+        "decision": "request_approval",
         "lane": "windows_wrapper",
         "riskTier": "low",
         "action": "notify",
@@ -27,7 +28,8 @@ CASES: tuple[dict[str, Any], ...] = (
     {
         "id": "codex_plan",
         "message": "오픈클로, Codex로 현재 프로젝트 다음 계획 세워줘",
-        "lane": "windows_wrapper",
+        "decision": "request_approval",
+        "lane": "codex_plan",
         "riskTier": "medium",
         "action": "open_vscode_codex_plan",
         "approvalRequest": True,
@@ -35,19 +37,21 @@ CASES: tuple[dict[str, Any], ...] = (
     {
         "id": "cancel",
         "message": "취소",
-        "lane": "control",
+        "decision": "cancel",
+        "lane": "none",
         "riskTier": "low",
-        "action": "cancel",
+        "action": None,
         "approvalRequest": False,
     },
     {
         "id": "critical",
         "message": "오픈클로, 결제하고 Gmail로 비밀번호 보내",
-        "lane": "deny",
+        "decision": "deny",
+        "lane": "none",
         "riskTier": "critical",
         "action": None,
         "approvalRequest": False,
-        "mustDeny": True,
+        "allowBlocked": True,
     },
 )
 
@@ -114,15 +118,21 @@ def read_log_entries() -> list[dict[str, Any]]:
 def validate_preview(case: dict[str, Any], preview: dict[str, Any]) -> list[str]:
     errors: list[str] = []
     route = preview.get("route", {})
+    planner = preview.get("planner") if isinstance(preview.get("planner"), dict) else {}
     if preview.get("wouldExecute") is not False:
         errors.append("wouldExecute must remain false")
+
+    if case.get("allowBlocked") and bool(route.get("blocked")) and not preview.get("approvalRequest"):
+        return errors
+
+    decision = route.get("decision") or planner.get("decision")
+    if decision != case.get("decision"):
+        errors.append(f"decision expected {case.get('decision')!r}, got {decision!r}")
     for key in ("lane", "riskTier", "action"):
         if route.get(key) != case.get(key):
             errors.append(f"{key} expected {case.get(key)!r}, got {route.get(key)!r}")
     if bool(preview.get("approvalRequest")) != bool(case["approvalRequest"]):
         errors.append(f"approvalRequest presence expected {case['approvalRequest']!r}")
-    if bool(route.get("mustDeny")) != bool(case.get("mustDeny", False)):
-        errors.append(f"mustDeny expected {bool(case.get('mustDeny', False))!r}")
     request = preview.get("approvalRequest")
     if request:
         payload_hash = request.get("payloadHash")
@@ -166,7 +176,7 @@ def main(argv: Sequence[str]) -> int:
         if env_values.get("OPENCLAW_BIN") != args.shim_path:
             env_errors.append("OPENCLAW_BIN does not point to the dry-run shim")
         if env_values.get("KIWI_WS_ENABLED", "").lower() != "false":
-            env_errors.append("KIWI_WS_ENABLED must remain false for v7.2")
+            env_errors.append("KIWI_WS_ENABLED must remain false for dry-run planner probes")
         report["checks"].append({"id": "env", "status": "failed" if env_errors else "passed", "errors": env_errors})
         failed = failed or bool(env_errors)
 
@@ -200,7 +210,7 @@ def main(argv: Sequence[str]) -> int:
         completed = invoke_shim(
             args.shim_path,
             ["agent", "--session-id", "kiwi-voice", "--message", case["message"], "--timeout", "120"],
-            timeout=60,
+            timeout=240,
         )
         errors: list[str] = []
         if completed.returncode != 0:

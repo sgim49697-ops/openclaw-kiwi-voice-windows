@@ -10,14 +10,14 @@
 ## Current Status
 
 ```text
-현재 canonical 기준: v7.2.15 Kiwi live dry-run stabilization
+현재 canonical 기준: v7.3.1 Codex OAuth voice planner dry-run bridge
 v7.2.1~v7.2.14: microphone/STT/wake/command 진단 archive
 repo 상태: main...origin/main clean
 Gateway approvals: allowlist + ask=always + askFallback=deny + autoAllowSkills=off
 Kiwi runtime: OPENCLAW_BIN=dry-run-openclaw.cmd, KIWI_WS_ENABLED=false
-Live dry-run: notify/cancel/critical 통과
+Live dry-run: Kiwi transcript → Codex planner → approval preview 통과
 실제 실행: dispatcher/OpenClaw real agent/browser/node live action 없음
-다음 gate: v7.3 Codex OAuth Voice Planner Contract
+다음 gate: v7.4 owner voice + Telegram/manual approval
 ```
 
 정리 기준:
@@ -1263,11 +1263,10 @@ v7.2 archive - Kiwi voice gate investigation:
 
 목표:
 
-```text
-Kiwi가 만든 STT transcript를 Codex OAuth planner에 먼저 보내고,
-Codex가 cancel/deny/clarify/request_approval, lane, riskTier, action을 판단한다.
-실행은 하지 않고 planner output schema와 post-planner enforcement 기준만 고정한다.
-```
+Kiwi가 만든 STT transcript를 Codex OAuth planner에 먼저 보내고, Codex가
+`cancel`, `deny`, `clarify`, `request_approval`, lane, riskTier, action을 판단한다.
+v7.3.1에서는 실행 없이 planner output schema와 post-planner enforcement 기준을 고정하고,
+Windows Kiwi dry-run shim 경로까지 planner preview만 생성하는 것을 확인했다.
 
 기본 호출:
 
@@ -1297,6 +1296,19 @@ wouldExecute: dry-run에서는 false
 - post-planner validator가 schema, action enum, approval, browser permission, dispatcher policy를 최종 검증한다.
 - high/critical risk는 Codex planner가 판단하더라도 fresh external approval 없이는 실행하지 않는다.
 - v7.4에서 owner voice와 Telegram/manual approval을 연결한다.
+
+v7.3.1 결과:
+
+```text
+voice_planner_probe.py: passed
+kiwi_live_dry_run_probe.py --skip-env-check: passed
+notify: request_approval / windows_wrapper / notify
+cancel: cancel / none / approval 없음
+critical: deny / none / critical / approval 없음
+browser_read: request_approval / browser_read / browser_read
+browser_interact: request_approval / browser_interact / browser_interact
+prompt injection: deny / none / critical / approval 없음
+```
 
 검증 케이스:
 
