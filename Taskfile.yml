@@ -150,6 +150,11 @@ tasks:
     cmds:
       - python3 scripts/wsl/kiwi_two_step_stt_gate.py || python scripts/wsl/kiwi_two_step_stt_gate.py
 
+  kiwi:command-stt-gate:
+    desc: Run the v7.2.14 fresh command-only STT dry-run gate.
+    cmds:
+      - python3 scripts/wsl/kiwi_command_stt_gate.py || python scripts/wsl/kiwi_command_stt_gate.py
+
   debug:once:
     desc: Run one read-only debug monitor pass.
     cmds:

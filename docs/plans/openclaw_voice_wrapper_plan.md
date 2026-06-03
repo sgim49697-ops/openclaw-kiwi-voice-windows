@@ -1470,6 +1470,28 @@ v7.2.13 dialog-mode command STT 보정 결과:
 - 다음 gate는 fresh raw/noise-off command capture 또는 alternate STT/backend/dedicated command grammar 비교
 ```
 
+v7.2.14 fresh command STT gate 계획/구현:
+
+```text
+- repo helper: scripts/wsl/kiwi_command_stt_gate.py
+- Taskfile recipe: kiwi:command-stt-gate
+- artifact: .debugloop/artifacts/kiwi/command-stt-v7.2.14/
+- standard capture와 raw-audio capture를 각각 "테스트 알림 보내줘" 5회, 6초 샘플로 저장
+- STT 후보:
+  small_dialog_prompt_commands / small_notify_prompt / small_short_prompt,
+  small 후보 실패 시 medium_notify_prompt
+- conservative pass 기준: commandHits>=3/5 또는 constrainedCommandHits>=3/5
+- hallucination marker 2회 이상 또는 critical marker 1회 이상이면 후보 실패
+- live notify/cancel/critical smoke는 helper summary liveReady=true 이후에만 진행
+- 실제 dispatcher/OpenClaw agent/browser/node 실행 없음
+- 실행 결과: blocked, liveReady=false
+- standard capture: sampleCount=5, rmsPassedCount=1, maxRms=0.004926
+- raw capture: sampleCount=5, rmsPassedCount=2, maxRms=0.003936
+- best near miss: standard small_short_prompt constrainedCommandHits=2/5
+- 모든 후보가 pass threshold 3/5 미달이므로 local config.yaml prompt 변경 없음
+- 다음 gate는 command phrase를 더 짧게 쪼갠 dedicated command grammar 또는 alternate STT backend 비교
+```
+
 정책 변경 전:
 
 ```text

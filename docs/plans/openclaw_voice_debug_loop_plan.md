@@ -1212,6 +1212,9 @@ approved runner는 성공한 request마다 `.debugloop/runs/e2e-approved-execute
 - repo STT eval은 constrained low-risk dry-run route를 기록하되, critical/hallucination marker는 통과시키지 않음
 - 기존 command WAV는 아직 stable notify gate 미통과(commandHits=0/3, constrainedCommandHits=0/3)라 live notify/cancel/critical smoke는 보류
 - OPENCLAW_BIN=dry-run-openclaw.cmd, KIWI_WS_ENABLED=false, Gateway approvals locked 유지
+- v7.2.14는 fresh command capture/eval helper로 standard/raw browser audio를 비교
+- v7.2.14 실행 결과는 blocked: standard small_short_prompt가 constrainedCommandHits=2/5로 가장 가까웠지만 기준 3/5 미달
+- helper가 liveReady=true를 만들기 전까지 live notify/cancel/critical smoke는 계속 보류
 ```
 
 ---

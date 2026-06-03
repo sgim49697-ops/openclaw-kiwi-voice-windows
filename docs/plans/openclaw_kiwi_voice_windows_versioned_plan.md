@@ -217,6 +217,21 @@ Kiwi v7.2.13 dialog-mode command STT gate:
   - existing v7.2.12 command WAVs still do not pass the stable notify gate: commandHits=0/3, constrainedCommandHits=0/3
   - live smoke remains skipped until offline command gate passes
   - no dispatcher/OpenClaw real agent/browser/node action executed
+
+Kiwi v7.2.14 fresh command STT gate:
+  - repo helper added: scripts/wsl/kiwi_command_stt_gate.py and Taskfile recipe kiwi:command-stt-gate
+  - artifact path: .debugloop/artifacts/kiwi/command-stt-v7.2.14/
+  - planned capture modes: standard browser audio and raw-audio browser constraints
+  - each mode captures 5 command-only samples of "테스트 알림 보내줘"
+  - conservative pass threshold: commandHits>=3/5 or constrainedCommandHits>=3/5
+  - hallucination marker >=2 or any critical marker blocks a candidate
+  - small candidates are evaluated first, medium_notify_prompt only if small candidates fail
+  - executed result: blocked, liveReady=false
+  - standard capture: sampleCount=5, rmsPassedCount=1, maxRms=0.004926
+  - raw capture: sampleCount=5, rmsPassedCount=2, maxRms=0.003936
+  - best near miss: standard small_short_prompt constrainedCommandHits=2/5
+  - no local config.yaml prompt update was applied
+  - live smoke remains skipped until a future offline command gate passes
 ```
 
 현재 Node는 `system.run`, `system.run.prepare`, `system.which`, `screen.snapshot`, `camera.list`,
