@@ -136,7 +136,7 @@ Browser read approved live smoke v7.5.1:
   - v7.5.2에서 browser_read live allowlist를 `example.com`, `docs.openclaw.ai/*`, `docs.kiwi-voice.com/*`로 확장
   - `v7-5-2-browser-read-openclaw-docs-20260603-213832`로 docs.openclaw.ai open/snapshot/screenshot 성공
   - gmail/github/http/evil-host/credentials/query/browser_interact live 시도는 거부
-  - next gate: v7.7 Voice → Telegram approved notify E2E 또는 v7.5.3 Browser read allowlist 템플릿화
+  - v7.8에서 voice-origin browser_read E2E까지 완료
 
 Telegram approval adapter fixture v7.6:
   - `telegram_approval.py` 추가: render, send-pending, poll-once, handle-update, probe-fixture
@@ -150,7 +150,7 @@ Telegram approval adapter fixture v7.6:
   - v7.6.2 live reject button smoke 통과
   - `v7-6-2-telegram-live-reject-20260603-211834`는 rejectedBy=telegram:8194519852 metadata를 기록
   - duplicate callback은 ignored 처리됐고 approved duplicate는 생성되지 않음
-  - next gate: v7.7 Voice → Telegram approved notify E2E
+  - v7.8에서 voice-origin browser_read E2E까지 완료
 ```
 
 현재 Node는 `system.run`, `system.run.prepare`, `system.which`, `screen.snapshot`, `camera.list`,
@@ -1137,7 +1137,7 @@ execution: v7.6.1 approve와 v7.6.2 reject/duplicate live button smoke 완료, r
 
 v7.6.2 이후:
 
-- v7.7 Voice → Telegram approved notify E2E
+- v7.8 Voice → Telegram approved browser_read E2E
 - owner voice 등록은 optional/later 신호로 유지
 - Gateway v4 WebSocket compatibility 또는 CLI fallback 최종 결정
 
@@ -1158,7 +1158,25 @@ execution: notify only
 - approved runner dry-run 후 `--execute-live --confirm-request-id <id>`로 Windows notification 1회만 실행한다.
 - executed marker가 있으면 duplicate live 실행은 skip된다.
 - `kiwi-live-20260604-013123-459`으로 live notify E2E가 통과했다.
-- 다음 gate는 `voice → approved browser_read live` 또는 `Browser read allowlist 템플릿화`다.
+- 다음 gate는 `Browser read allowlist 템플릿화` 또는 `voice → approved Codex plan gate`다.
+
+### v7.8 - Voice to Telegram Approved Browser Read Live E2E
+
+```text
+상태: 실제 Web Microphone 발화에서 browser_read live 실행 1회까지 통과
+범위: Kiwi STT → Codex planner → pending approval → Telegram approve → runner browser_read live
+execution: browser_read docs.openclaw.ai only
+```
+
+완료 기준:
+
+- Kiwi live approval bridge는 `browser_read` 승격 시 `params.profile=windows-cdp`와 `params.url=https://docs.openclaw.ai`를 요구한다.
+- 실제 발화 `"브라우저에서 docs.openclaw.ai 읽어줘"`가 `browser_read` approval preview로 도달했다.
+- `kiwi-live-20260604-021431-819`으로 pending → approved → dry-run → live browser_read가 통과했다.
+- live 실행은 `windows-cdp`에서 `https://docs.openclaw.ai` open/snapshot/screenshot까지만 수행했다.
+- wrong expected URL, Gmail URL, browser_interact live 시도는 거부됐다.
+- duplicate live 실행은 executed marker로 skip됐다.
+- 다음 gate는 `Browser read allowlist 템플릿화` 또는 `voice → approved Codex plan gate`다.
 
 ### Windows 설치 원칙
 

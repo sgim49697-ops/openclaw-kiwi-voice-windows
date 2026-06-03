@@ -71,6 +71,8 @@ def validate_approval_request(
     *,
     action: str,
     risk_tier: str,
+    expected_profile: str | None = None,
+    expected_url: str | None = None,
     allow_existing: bool = False,
 ) -> list[str]:
     errors: list[str] = []
@@ -93,6 +95,12 @@ def validate_approval_request(
         errors.append(f"approval riskTier must be {risk_tier}")
     if not isinstance(request.get("params"), dict):
         errors.append("approval params must be an object")
+    else:
+        params = request["params"]
+        if expected_profile is not None and params.get("profile") != expected_profile:
+            errors.append(f"approval params.profile must be {expected_profile}")
+        if expected_url is not None and params.get("url") != expected_url:
+            errors.append(f"approval params.url must be {expected_url}")
     expected_hash = request.get("payloadHash")
     actual_hash = payload_hash(canonical_payload(request))
     if expected_hash != actual_hash:
@@ -113,6 +121,8 @@ def find_matching_event(
     action: str,
     risk_tier: str,
     transcript_contains: str | None,
+    expected_profile: str | None = None,
+    expected_url: str | None = None,
     allow_existing: bool = False,
 ) -> tuple[int, dict[str, Any], dict[str, Any], list[str]] | None:
     for line_number, event in reversed(entries):
@@ -131,12 +141,19 @@ def find_matching_event(
             errors.append(f"route action must be {action}")
         if route.get("riskTier") != risk_tier:
             errors.append(f"route riskTier must be {risk_tier}")
+        route_params = route.get("params") if isinstance(route.get("params"), dict) else {}
+        if expected_profile is not None and route_params.get("profile") != expected_profile:
+            errors.append(f"route params.profile must be {expected_profile}")
+        if expected_url is not None and route_params.get("url") != expected_url:
+            errors.append(f"route params.url must be {expected_url}")
         request = preview.get("approvalRequest")
         errors.extend(
             validate_approval_request(
                 request,
                 action=action,
                 risk_tier=risk_tier,
+                expected_profile=expected_profile,
+                expected_url=expected_url,
                 allow_existing=allow_existing,
             )
         )
@@ -160,6 +177,8 @@ def command_status(args: argparse.Namespace) -> int:
         action=args.action,
         risk_tier=args.risk_tier,
         transcript_contains=args.transcript_contains,
+        expected_profile=args.expected_profile,
+        expected_url=args.expected_url,
         allow_existing=True,
     )
     response: dict[str, Any] = {
@@ -170,12 +189,15 @@ def command_status(args: argparse.Namespace) -> int:
     }
     if match:
         line_number, event, request, _errors = match
+        params = request.get("params") if isinstance(request.get("params"), dict) else {}
         response["matchingEvent"] = {
             "line": line_number,
             "message": event.get("message"),
             "requestId": request.get("requestId"),
             "action": request.get("action"),
             "riskTier": request.get("riskTier"),
+            "profile": params.get("profile"),
+            "url": params.get("url"),
             "queueStatus": existing_request_status(str(request.get("requestId"))),
         }
     print(json.dumps(response, ensure_ascii=False, indent=2, sort_keys=True))
@@ -189,6 +211,8 @@ def command_write_latest(args: argparse.Namespace) -> int:
         action=args.action,
         risk_tier=args.risk_tier,
         transcript_contains=args.transcript_contains,
+        expected_profile=args.expected_profile,
+        expected_url=args.expected_url,
     )
     if not match:
         print("kiwi live approval bridge error: no matching safe live dry-run approval found", file=sys.stderr)
@@ -222,6 +246,8 @@ def command_wait_write(args: argparse.Namespace) -> int:
             action=args.action,
             risk_tier=args.risk_tier,
             transcript_contains=args.transcript_contains,
+            expected_profile=args.expected_profile,
+            expected_url=args.expected_url,
         )
         if match:
             line_number, event, request, _errors = match
@@ -264,6 +290,8 @@ def add_common_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--action", default="notify")
     parser.add_argument("--risk-tier", default="low")
     parser.add_argument("--transcript-contains", default="테스트 알림")
+    parser.add_argument("--expected-profile", help="Require approvalRequest.params.profile to match this value.")
+    parser.add_argument("--expected-url", help="Require approvalRequest.params.url to match this value.")
 
 
 def parse_args(argv: Sequence[str]) -> argparse.Namespace:

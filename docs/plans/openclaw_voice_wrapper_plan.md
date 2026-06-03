@@ -1194,6 +1194,7 @@ task check 통과 또는 task CLI 미설치 시 개별 validator 통과
 - [x] v7.6.2 Telegram reject/duplicate live smoke
 - [x] v7.5.2 Browser read URL allowlist 확장
 - [x] v7.7 Voice → Telegram approved notify live E2E
+- [x] v7.8 Voice → Telegram approved browser_read live E2E
 - [ ] owner voice 등록 (optional/later)
 - [ ] Browser read allowlist 템플릿화
 - [ ] Gateway v4 WebSocket 호환 또는 CLI fallback 유지 결정
@@ -1606,7 +1607,7 @@ v7.5.1 browser read approved live smoke 결과:
 - v7.5.2에서 live allowlist를 example.com, docs.openclaw.ai/*, docs.kiwi-voice.com/*로 확장
 - v7-5-2-browser-read-openclaw-docs approved request가 open/snapshot/screenshot 통과
 - gmail/github/http/evil-host/credentials/query/browser_interact live 시도는 거부
-- 다음 gate는 v7.7 Voice → Telegram approved notify live E2E 또는 v7.5.3 Browser read allowlist 템플릿화
+- v7.8에서 voice-origin browser_read E2E까지 완료
 ```
 
 v7.6 Telegram approval adapter fixture 결과:
@@ -1639,7 +1640,23 @@ v7.7 Voice → Telegram approved notify live E2E 결과:
 - approved runner dry-run 후 dispatcher notify live 1회 실행 성공
 - executed marker 생성 후 duplicate live 실행은 skip
 - Web Microphone 종료 후 web_audio_clients=0 복귀
-- 다음 gate는 voice → approved browser_read live 또는 Browser read allowlist 템플릿화
+- v7.8에서 voice-origin browser_read E2E까지 완료
+```
+
+v7.8 Voice → Telegram approved browser_read live E2E 결과:
+
+```text
+- kiwi_live_approval_bridge.py가 browser_read 승격 조건을 지원
+- 승격 조건: wouldExecute=false, action=browser_read, riskTier=low, payloadHash valid,
+  params.profile=windows-cdp, params.url=https://docs.openclaw.ai
+- 실제 Web Microphone 발화 "브라우저에서 docs.openclaw.ai 읽어줘"가 Codex planner browser_read preview로 도달
+- request id: kiwi-live-20260604-021431-819
+- Telegram Approve callback으로 approvalMethod=telegram, approvedBy=telegram:8194519852 기록
+- approved runner dry-run 후 windows-cdp에서 docs.openclaw.ai open/snapshot/screenshot 성공
+- wrong expected URL, Gmail URL, browser_interact live 시도는 거부
+- executed marker 생성 후 duplicate live 실행은 skip
+- Web Microphone 종료 후 web_audio_clients=0 복귀
+- 다음 gate는 Browser read allowlist 템플릿화 또는 voice → approved Codex plan gate
 ```
 
 정책 변경 전:

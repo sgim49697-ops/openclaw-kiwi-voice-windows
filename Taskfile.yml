@@ -140,6 +140,11 @@ tasks:
     cmds:
       - python3 scripts/wsl/kiwi_live_approval_bridge.py wait-write || python scripts/wsl/kiwi_live_approval_bridge.py wait-write
 
+  kiwi:live-browser-read-approval-bridge:
+    desc: Promote a safe new Kiwi live browser_read docs.openclaw.ai preview into the pending approval queue.
+    cmds:
+      - python3 scripts/wsl/kiwi_live_approval_bridge.py wait-write --action browser_read --risk-tier low --transcript-contains docs.openclaw.ai --expected-profile windows-cdp --expected-url https://docs.openclaw.ai || python scripts/wsl/kiwi_live_approval_bridge.py wait-write --action browser_read --risk-tier low --transcript-contains docs.openclaw.ai --expected-profile windows-cdp --expected-url https://docs.openclaw.ai
+
   kiwi:runtime-capture:
     desc: Restart Windows Kiwi with stdout/stderr captured to ignored artifacts.
     cmds:
