@@ -133,7 +133,10 @@ Browser read approved live smoke v7.5.1:
   - screenshot artifact: `.debugloop/artifacts/browser/browser-read-ok.png`
   - executed marker 생성 후 두 번째 live 실행은 skip
   - payloadHash mismatch, browser_interact, open_vscode_codex_plan, user profile, gmail URL live 시도는 거부
-  - next gate: v7.6 Telegram approval 또는 v7.5.2 Browser read URL allowlist 확장
+  - v7.5.2에서 browser_read live allowlist를 `example.com`, `docs.openclaw.ai/*`, `docs.kiwi-voice.com/*`로 확장
+  - `v7-5-2-browser-read-openclaw-docs-20260603-213832`로 docs.openclaw.ai open/snapshot/screenshot 성공
+  - gmail/github/http/evil-host/credentials/query/browser_interact live 시도는 거부
+  - next gate: v7.7 owner voice 등록 또는 v7.5.3 Browser read allowlist 템플릿화
 
 Telegram approval adapter fixture v7.6:
   - `telegram_approval.py` 추가: render, send-pending, poll-once, handle-update, probe-fixture
@@ -1096,21 +1099,21 @@ execution: notify only
 - marker가 있으면 두 번째 live 실행은 skip된다.
 - browser/Codex plan/critical/payloadHash mismatch live 시도는 거부된다.
 
-### v7.5.1 - Browser Read Approved Live Smoke
+### v7.5.1/v7.5.2 - Browser Read Approved Live Smoke
 
 ```text
-상태: dedicated browser read live smoke 완료
-범위: windows-cdp + https://example.com read-only
+상태: dedicated browser read live smoke와 URL allowlist 확장 완료
+범위: windows-cdp + example.com/docs.openclaw.ai/docs.kiwi-voice.com read-only
 execution: browser_read only
 ```
 
 완료 기준:
 
-- approved `browser_read` live는 `windows-cdp` profile과 `https://example.com` URL만 허용한다.
+- approved `browser_read` live는 `windows-cdp` profile과 allowlisted HTTPS URL만 허용한다.
 - browser probe가 status/tabs/open/doctor/snapshot/screenshot/console/errors를 통과한다.
 - screenshot artifact가 생성된다.
 - marker가 있으면 두 번째 live 실행은 skip된다.
-- browser_interact, Codex plan, user profile, Gmail/임의 URL live 시도는 거부된다.
+- browser_interact, Codex plan, user profile, Gmail/임의 URL, credentials/query/fragment URL live 시도는 거부된다.
 
 ### v7.6 - Telegram Approval Adapter Fixture Smoke
 
