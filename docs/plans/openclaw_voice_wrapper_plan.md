@@ -1186,8 +1186,10 @@ task check 통과 또는 task CLI 미설치 시 개별 validator 통과
 - [x] v7.2.15 Kiwi live dry-run 안정화: notify/cancel/critical smoke 통과
 - [x] v7.3.1 Codex OAuth voice planner dry-run bridge
 - [x] v7.4 manual/local external approval gate contract
+- [x] v7.5 approved notify live execution smoke
 - [ ] owner voice 등록
 - [ ] Telegram approval 연결
+- [ ] Browser read approved live smoke
 - [ ] Gateway v4 WebSocket 호환 또는 CLI fallback 유지 결정
 
 완료 기준:
@@ -1201,6 +1203,8 @@ planner output이 schemas/voice-planner-output.schema.json을 통과함
 critical/high risk는 planner 판단 후에도 post-planner approval 없이는 실행 안 됨
 approval_queue.py로 pending -> approved/rejected 상태 전이 가능
 e2e_approved_runner.py --dry-run으로 approved request 검증 가능
+approved low-risk notify request는 명시적 live confirm 후 1회 실행 가능
+browser/Codex plan/critical live execution은 계속 거부
 ```
 
 ### Phase 7 — 관측/확장
@@ -1565,6 +1569,18 @@ v7.4 external approval gate 결과:
 - Telegram은 templates/telegram/approval.env.example 템플릿만 추가
 - 실제 dispatcher/browser live execution 없음
 - 다음 gate는 v7.5 approved execution smoke
+```
+
+v7.5 approved notify live execution smoke 결과:
+
+```text
+- e2e_approved_runner.py 기본 동작은 dry-run
+- live 실행은 --execute-live --confirm-request-id <id>가 필요
+- v7.5 live 범위는 notify + low risk + manual/telegram approval로 제한
+- v7-5-notify approved request가 dispatcher notify로 1회 실행됨
+- executed marker 생성 후 재실행은 skip
+- confirm mismatch, payloadHash mismatch, critical, browser_read, open_vscode_codex_plan live 시도는 거부
+- 다음 gate는 v7.5.1 browser read approved live smoke 또는 v7.6 Telegram approval
 ```
 
 정책 변경 전:

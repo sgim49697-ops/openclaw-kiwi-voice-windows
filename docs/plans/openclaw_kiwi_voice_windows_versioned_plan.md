@@ -116,6 +116,15 @@ External approval gate v7.4:
   - approved runner는 이번 batch에서 `--dry-run` 검증만 수행
   - Telegram은 `templates/telegram/approval.env.example` 템플릿만 추가하고 secret은 repo에 저장하지 않음
   - next gate: v7.5 approved execution smoke
+
+Approved notify live smoke v7.5:
+  - approved runner 기본 동작을 dry-run으로 고정
+  - live 실행은 `--execute-live --confirm-request-id <id>`가 있어야만 가능
+  - v7.5 live 범위는 `notify`, `riskTier=low`, `approvalMethod=manual|telegram`로 제한
+  - `v7-5-notify` approved request를 dispatcher로 1회 실행하고 Windows notification 성공
+  - executed marker 생성 후 두 번째 live 실행은 skip
+  - confirm mismatch, payloadHash mismatch, critical, browser_read, open_vscode_codex_plan live 시도는 거부
+  - next gate: v7.5.1 browser read approved live smoke 또는 v7.6 Telegram approval
 ```
 
 현재 Node는 `system.run`, `system.run.prepare`, `system.which`, `screen.snapshot`, `camera.list`,
@@ -1047,11 +1056,28 @@ Codex planner approval preview
 - payloadHash mismatch와 critical risk는 runner가 거부한다.
 - rejected request는 approved runner 대상이 아니다.
 
-v7.5 이후:
+### v7.5 - Approved Notify Live Execution Smoke
+
+```text
+상태: low-risk notify live smoke 완료
+범위: approved runner live guard, dispatcher notify 1회 실행
+execution: notify only
+```
+
+완료 기준:
+
+- runner 기본 동작은 dry-run이다.
+- live 실행은 `--execute-live --confirm-request-id <id>`가 필요하다.
+- v7.5 live는 approved low-risk `notify`만 허용한다.
+- Windows notification이 1회 표시되고 executed marker가 생성된다.
+- marker가 있으면 두 번째 live 실행은 skip된다.
+- browser/Codex plan/critical/payloadHash mismatch live 시도는 거부된다.
+
+v7.5.1 이후:
 
 - owner voice 등록
 - Telegram/manual approval 연결
-- approved request live smoke
+- browser read approved live smoke
 - Gateway v4 WebSocket compatibility 또는 CLI fallback 최종 결정
 
 ### Windows 설치 원칙

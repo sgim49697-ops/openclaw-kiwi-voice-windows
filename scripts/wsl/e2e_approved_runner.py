@@ -35,6 +35,9 @@ BROWSER_ACTIONS = {
 }
 DENIED_RISK_TIERS = {"critical"}
 DISPATCHER_APPROVAL_METHODS = {"voice", "telegram", "manual"}
+LIVE_ACTIONS = {"notify"}
+LIVE_APPROVAL_METHODS = {"manual", "telegram"}
+LIVE_RISK_TIERS = {"low"}
 
 
 def now_iso() -> str:
@@ -55,6 +58,19 @@ def short_output(output: str, limit: int = 1400) -> str:
     return collapsed[: limit - 3] + "..."
 
 
+def decode_output(output: bytes | str | None) -> str:
+    if output is None:
+        return ""
+    if isinstance(output, str):
+        return output
+    for encoding in ("utf-8-sig", "cp949"):
+        try:
+            return output.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+    return output.decode("utf-8", errors="replace")
+
+
 def relative(path: Path) -> str:
     return path.relative_to(ROOT).as_posix()
 
@@ -65,23 +81,19 @@ def run_command(name: str, command: Sequence[str], timeout: int) -> dict:
         completed = subprocess.run(
             list(command),
             cwd=ROOT,
-            text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             timeout=timeout,
             check=False,
             env=command_env(),
         )
-        output = completed.stdout.strip()
+        output = decode_output(completed.stdout).strip()
         returncode = completed.returncode
     except FileNotFoundError as exc:
         output = str(exc)
         returncode = 127
     except subprocess.TimeoutExpired as exc:
-        raw_output = exc.stdout or ""
-        if isinstance(raw_output, bytes):
-            raw_output = raw_output.decode("utf-8", errors="replace")
-        output = raw_output.strip() or "command timed out"
+        output = decode_output(exc.stdout).strip() or "command timed out"
         returncode = 124
 
     return {
@@ -171,6 +183,20 @@ def validate_request(request: dict) -> None:
     if not isinstance(request["params"], dict):
         raise ValueError("params must be an object")
     assert_payload_hash(request)
+
+
+def validate_live_request(request: dict, confirm_request_id: str | None) -> None:
+    request_id = str(request.get("requestId", ""))
+    if not confirm_request_id:
+        raise ValueError("live execution requires --confirm-request-id")
+    if confirm_request_id != request_id:
+        raise ValueError("confirm-request-id must match request-id")
+    if request.get("action") not in LIVE_ACTIONS:
+        raise ValueError("v7.5 live execution is limited to notify")
+    if request.get("riskTier") not in LIVE_RISK_TIERS:
+        raise ValueError("v7.5 live execution requires low risk")
+    if request.get("approvalMethod") not in LIVE_APPROVAL_METHODS:
+        raise ValueError("v7.5 live execution requires manual or telegram approval")
 
 
 def dispatcher_approval_method(request: dict) -> str:
@@ -310,7 +336,8 @@ def write_executed_record(record: dict) -> None:
     path.write_text(json.dumps(record, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
-def run_file(path: Path, dry_run: bool, force: bool) -> dict:
+def run_file(path: Path, execute_live: bool, confirm_request_id: str | None, force: bool) -> dict:
+    dry_run = not execute_live
     record = {
         "timestamp": now_iso(),
         "mode": "approved_e2e_runner",
@@ -330,15 +357,17 @@ def run_file(path: Path, dry_run: bool, force: bool) -> dict:
         record["requestId"] = request["requestId"]
         record["action"] = request["action"]
         record["riskTier"] = request["riskTier"]
+        if execute_live:
+            validate_live_request(request, confirm_request_id)
         already_executed = executed_path(record["requestId"])
-        if already_executed.exists() and not dry_run and not force:
+        if already_executed.exists() and execute_live and not force:
             record["status"] = "ok"
             record["skipped"] = True
             record["skipReason"] = f"already executed: {relative(already_executed)}"
             return record
         record["steps"] = execute_request(request, dry_run=dry_run)
         record["status"] = "ok" if all(step["status"] in {"ok", "dry_run"} for step in record["steps"]) else "blocked"
-        if record["status"] == "ok" and not dry_run:
+        if record["status"] == "ok" and execute_live:
             write_executed_record(record)
     except Exception as exc:
         record["errors"].append(str(exc))
@@ -365,7 +394,10 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--request-id", help="Approved request id to run.")
     group.add_argument("--all", action="store_true", help="Run all approved requests.")
-    parser.add_argument("--dry-run", action="store_true", help="Validate and print commands without executing them.")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--dry-run", action="store_true", help="Validate and print commands without executing them. This is the default.")
+    mode.add_argument("--execute-live", action="store_true", help="Execute one approved low-risk notify request.")
+    parser.add_argument("--confirm-request-id", help="Required for --execute-live; must match --request-id.")
     parser.add_argument("--force", action="store_true", help="Re-run an approved request even if it has an executed marker.")
     parser.add_argument("--log-path", type=Path, default=DEFAULT_LOG_PATH)
     return parser.parse_args(argv)
@@ -373,6 +405,13 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
 
 def main(argv: Sequence[str]) -> int:
     args = parse_args(argv)
+    if args.execute_live:
+        if args.all or not args.request_id:
+            print("status: blocked\nerror: --execute-live requires exactly one --request-id")
+            return 1
+        if args.confirm_request_id != args.request_id:
+            print("status: blocked\nerror: confirm-request-id must match request-id")
+            return 1
     try:
         files = selected_files(args)
     except Exception as exc:
@@ -383,7 +422,15 @@ def main(argv: Sequence[str]) -> int:
         print("status: ok\nmessage: no approved requests")
         return 0
 
-    records = [run_file(path, dry_run=args.dry_run, force=args.force) for path in files]
+    records = [
+        run_file(
+            path,
+            execute_live=args.execute_live,
+            confirm_request_id=args.confirm_request_id,
+            force=args.force,
+        )
+        for path in files
+    ]
     for record in records:
         append_jsonl(args.log_path, record)
         print_record(record)

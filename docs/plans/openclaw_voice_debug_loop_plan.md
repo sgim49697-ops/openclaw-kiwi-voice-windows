@@ -10,14 +10,14 @@
 ## Current Status
 
 ```text
-현재 canonical 기준: v7.4 External Approval Gate Contract
+현재 canonical 기준: v7.5 Approved Notify Live Execution Smoke
 v7.2.1~v7.2.14: microphone/STT/wake/command 진단 archive
 repo 상태: main...origin/main clean
 Gateway approvals: allowlist + ask=always + askFallback=deny + autoAllowSkills=off
 Kiwi runtime: OPENCLAW_BIN=dry-run-openclaw.cmd, KIWI_WS_ENABLED=false
-Live dry-run: Kiwi transcript → Codex planner → approval preview → manual queue dry-run 통과
-실제 실행: dispatcher/OpenClaw real agent/browser/node live action 없음
-다음 gate: v7.5 approved execution smoke
+Live smoke: Codex planner → manual approval queue → approved runner → dispatcher notify 1회 통과
+실제 실행: low-risk dispatcher notify만 허용, browser/Codex/Kiwi/Telegram live action 없음
+다음 gate: v7.5.1 Browser read approved live smoke 또는 v7.6 Telegram approval
 ```
 
 정리 기준:
@@ -1338,6 +1338,34 @@ e2e_approved_runner.py --dry-run -> 실행 없이 command preview
 wrong confirm id -> approve 실패
 payloadHash mismatch -> runner 거부
 critical approved request -> runner 거부
+```
+
+## v7.5 - Approved Notify Live Execution Smoke
+
+목표:
+
+```text
+승인된 low-risk notify request만 실제 dispatcher로 1회 실행한다.
+기본 runner 동작은 dry-run이고 live 실행은 명시 플래그와 request id 재확인이 필요하다.
+```
+
+정책:
+
+- `e2e_approved_runner.py`는 기본적으로 dry-run만 수행한다.
+- live 실행은 `--execute-live --confirm-request-id <id>`가 모두 있을 때만 가능하다.
+- v7.5 live action은 `notify`, `riskTier=low`, `approvalMethod=manual|telegram`만 허용한다.
+- browser read/interact, Codex plan, Kiwi voice live execution은 이번 gate에서 제외한다.
+- live 성공 후 executed marker가 있으면 `--force` 없이는 재실행하지 않는다.
+
+검증:
+
+```text
+voice_planner.py --write-approval -> pending notify 생성
+approval_queue.py approve -> approved notify 생성
+e2e_approved_runner.py --dry-run -> dispatcher preview
+e2e_approved_runner.py --execute-live --confirm-request-id v7-5-notify -> Windows notification 성공
+두 번째 live 실행 -> executed marker 때문에 skip
+confirm mismatch / payloadHash mismatch / critical / browser / codex live 시도 -> 거부
 ```
 
 검증 케이스:
