@@ -70,6 +70,21 @@ tasks:
     cmds:
       - 'python3 scripts/wsl/approval_queue.py reject --request-id "{{.REQUEST_ID | default ""}}" --method manual --rejected-by owner --confirm-request-id "{{.REQUEST_ID | default ""}}" || python scripts/wsl/approval_queue.py reject --request-id "{{.REQUEST_ID | default ""}}" --method manual --rejected-by owner --confirm-request-id "{{.REQUEST_ID | default ""}}"'
 
+  telegram:approval-fixture:
+    desc: Simulate a Telegram approval callback for one pending request.
+    cmds:
+      - 'python3 scripts/wsl/telegram_approval.py probe-fixture --request-id "{{.REQUEST_ID | default ""}}" --decision "{{.DECISION | default "approve"}}" || python scripts/wsl/telegram_approval.py probe-fixture --request-id "{{.REQUEST_ID | default ""}}" --decision "{{.DECISION | default "approve"}}"'
+
+  telegram:send-pending:
+    desc: Send one pending approval request to Telegram when local secrets are configured.
+    cmds:
+      - 'python3 scripts/wsl/telegram_approval.py send-pending --request-id "{{.REQUEST_ID | default ""}}" || python scripts/wsl/telegram_approval.py send-pending --request-id "{{.REQUEST_ID | default ""}}"'
+
+  telegram:poll-once:
+    desc: Poll Telegram once and handle one approval callback.
+    cmds:
+      - python3 scripts/wsl/telegram_approval.py poll-once || python scripts/wsl/telegram_approval.py poll-once
+
   e2e:dry-run:
     desc: Preview text intent routing without executing actions.
     cmds:
