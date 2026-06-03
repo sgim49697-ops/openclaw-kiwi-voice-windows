@@ -135,6 +135,11 @@ tasks:
     cmds:
       - python3 scripts/wsl/kiwi_live_dry_run_probe.py || python scripts/wsl/kiwi_live_dry_run_probe.py
 
+  kiwi:live-approval-bridge:
+    desc: Promote a safe new Kiwi live notify dry-run preview into the pending approval queue.
+    cmds:
+      - python3 scripts/wsl/kiwi_live_approval_bridge.py wait-write || python scripts/wsl/kiwi_live_approval_bridge.py wait-write
+
   kiwi:runtime-capture:
     desc: Restart Windows Kiwi with stdout/stderr captured to ignored artifacts.
     cmds:

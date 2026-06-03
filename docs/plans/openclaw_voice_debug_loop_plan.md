@@ -10,14 +10,15 @@
 ## Current Status
 
 ```text
-현재 canonical 기준: v7.5.2 Browser Read URL Allowlist 확장
+현재 canonical 기준: v7.7 Voice → Codex Planner → Telegram Approval → Notify Live E2E
 v7.2.1~v7.2.14: microphone/STT/wake/command 진단 archive
 repo 상태: main...origin/main clean
 Gateway approvals: allowlist + ask=always + askFallback=deny + autoAllowSkills=off
 Kiwi runtime: OPENCLAW_BIN=dry-run-openclaw.cmd, KIWI_WS_ENABLED=false
-Live smoke: approved runner로 dispatcher notify 1회, browser_read example.com/docs.openclaw.ai 1회씩 통과
+Live smoke: voice-origin dispatcher notify 1회, approved runner browser_read example.com/docs.openclaw.ai 1회씩 통과
 Approval: Telegram adapter fixture, live approve, live reject, duplicate callback 통과
-다음 gate: v7.7 owner voice 등록 또는 v7.5.3 Browser read allowlist 템플릿화
+Owner voice: 필수 gate에서 제외, optional/later 신호로만 유지
+다음 gate: voice → approved browser_read live 또는 Browser read allowlist 템플릿화
 ```
 
 정리 기준:
@@ -44,7 +45,7 @@ v7.3부터 음성 transcript의 1차 의미 판단은 Codex OAuth planner가 맡
 결제, Gmail, 비밀번호, 삭제, raw shell 같은 문장도 deterministic pre-guard에서 먼저
 가로채지 않고 planner로 전달한다.
 
-승인은 agent 내부 판단이 아니라 owner voice, Telegram, OpenClaw approval, GitHub PR review, 로컬 승인 파일 같은 **agent 밖의 신호**로만 성립한다. agent는 승인 요청을 만들고 대기할 수 있지만, 자기 요청을 자기 승인으로 처리하지 않는다. v7.4의 manual/local approval은 사용자가 명시적으로 `approval_queue.py approve --confirm-request-id <id>`를 호출하는 경우에만 성립한다.
+승인은 agent 내부 판단이 아니라 Telegram, OpenClaw approval, GitHub PR review, 로컬 승인 파일 같은 **agent 밖의 신호**로만 성립한다. owner voice는 선택적 보조 신호일 뿐 필수 승인 gate가 아니다. agent는 승인 요청을 만들고 대기할 수 있지만, 자기 요청을 자기 승인으로 처리하지 않는다. v7.4의 manual/local approval은 사용자가 명시적으로 `approval_queue.py approve --confirm-request-id <id>`를 호출하는 경우에만 성립한다.
 
 ---
 
@@ -1504,6 +1505,35 @@ telegram_approval.py poll-once -> approvalMethod=telegram, rejectedBy=telegram:8
 - approved queue에 동일 request가 생기지 않았다.
 - duplicate callback은 `ignored`로 처리됐고 상태는 rejected로 유지됐다.
 - 실제 dispatcher/browser/Codex/Kiwi action은 실행하지 않았다.
+- Gateway approvals는 `allowlist + ask=always + askFallback=deny + autoAllowSkills=off` 상태를 유지했다.
+
+## v7.7 - Voice to Telegram Approved Notify Live E2E
+
+목표:
+
+```text
+실제 Kiwi Web Microphone 발화가 Codex planner, Telegram approval, approved runner를 거쳐
+low-risk notify live 실행 1회까지 연결되는지 검증한다.
+```
+
+구현:
+
+```text
+kiwi_live_approval_bridge.py가 새 kiwi-live-dry-run JSONL 이벤트만 감시한다.
+조건은 wouldExecute=false, action=notify, riskTier=low, payloadHash valid, source=voice-planner-dry-run이다.
+통과한 approval preview만 .debugloop/queue/pending으로 승격한다.
+```
+
+결과:
+
+- owner voice 등록은 필수 gate에서 제외했고, optional/later 신호로 낮췄다.
+- Web Microphone 연결 후 실제 발화 `"테스트 알림 보내줘"`가 STT를 거쳐 dry-run shim에 도달했다.
+- `kiwi-live-20260604-013123-459` pending request가 생성됐다.
+- Telegram live Approve callback이 `approvalMethod=telegram`, `approvedBy=telegram:8194519852`로 approved queue 전이를 만들었다.
+- `e2e_approved_runner.py --dry-run`은 dispatcher preview만 출력했다.
+- `e2e_approved_runner.py --execute-live --confirm-request-id kiwi-live-20260604-013123-459`로 Windows notification이 1회 표시됐다.
+- executed marker 생성 후 두 번째 live 실행은 skip 처리됐다.
+- Web Microphone은 종료 후 `web_audio_clients=0`으로 복귀했다.
 - Gateway approvals는 `allowlist + ask=always + askFallback=deny + autoAllowSkills=off` 상태를 유지했다.
 
 검증 케이스:

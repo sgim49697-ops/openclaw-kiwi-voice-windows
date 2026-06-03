@@ -136,7 +136,7 @@ Browser read approved live smoke v7.5.1:
   - v7.5.2에서 browser_read live allowlist를 `example.com`, `docs.openclaw.ai/*`, `docs.kiwi-voice.com/*`로 확장
   - `v7-5-2-browser-read-openclaw-docs-20260603-213832`로 docs.openclaw.ai open/snapshot/screenshot 성공
   - gmail/github/http/evil-host/credentials/query/browser_interact live 시도는 거부
-  - next gate: v7.7 owner voice 등록 또는 v7.5.3 Browser read allowlist 템플릿화
+  - next gate: v7.7 Voice → Telegram approved notify E2E 또는 v7.5.3 Browser read allowlist 템플릿화
 
 Telegram approval adapter fixture v7.6:
   - `telegram_approval.py` 추가: render, send-pending, poll-once, handle-update, probe-fixture
@@ -150,7 +150,7 @@ Telegram approval adapter fixture v7.6:
   - v7.6.2 live reject button smoke 통과
   - `v7-6-2-telegram-live-reject-20260603-211834`는 rejectedBy=telegram:8194519852 metadata를 기록
   - duplicate callback은 ignored 처리됐고 approved duplicate는 생성되지 않음
-  - next gate: v7.5.2 Browser read URL allowlist 확장 또는 v7.7 owner voice 등록
+  - next gate: v7.7 Voice → Telegram approved notify E2E
 ```
 
 현재 Node는 `system.run`, `system.run.prepare`, `system.which`, `screen.snapshot`, `camera.list`,
@@ -1137,9 +1137,28 @@ execution: v7.6.1 approve와 v7.6.2 reject/duplicate live button smoke 완료, r
 
 v7.6.2 이후:
 
-- owner voice 등록
-- Browser read URL allowlist 확장
+- v7.7 Voice → Telegram approved notify E2E
+- owner voice 등록은 optional/later 신호로 유지
 - Gateway v4 WebSocket compatibility 또는 CLI fallback 최종 결정
+
+### v7.7 - Voice to Telegram Approved Notify Live E2E
+
+```text
+상태: 실제 Web Microphone 발화에서 notify live 실행 1회까지 통과
+범위: Kiwi STT → Codex planner → pending approval → Telegram approve → runner notify live
+execution: notify only
+```
+
+완료 기준:
+
+- owner voice 등록은 필수 gate가 아니다.
+- Kiwi live dry-run JSONL의 새 이벤트만 pending approval로 승격한다.
+- 승격 조건은 `wouldExecute=false`, `action=notify`, `riskTier=low`, `payloadHash` 유효, `source=voice-planner-dry-run`이다.
+- Telegram approve callback은 `approvalMethod=telegram`, `approvedBy=telegram:8194519852` metadata를 기록한다.
+- approved runner dry-run 후 `--execute-live --confirm-request-id <id>`로 Windows notification 1회만 실행한다.
+- executed marker가 있으면 duplicate live 실행은 skip된다.
+- `kiwi-live-20260604-013123-459`으로 live notify E2E가 통과했다.
+- 다음 gate는 `voice → approved browser_read live` 또는 `Browser read allowlist 템플릿화`다.
 
 ### Windows 설치 원칙
 

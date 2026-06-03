@@ -798,7 +798,8 @@ stt:
   device: "cuda"   # NVIDIA GPU 없으면 cpu
 
 security:
-  owner_required_for_medium: true
+  owner_required_for_medium: false  # optional/later signal only
+  telegram_required_for_medium: true
   telegram_required_for_high: true
   deny_critical_by_default: true
 
@@ -818,7 +819,7 @@ approval:
 
 ```text
 - low: 음성 확인 가능
-- medium: owner voice + OpenClaw exec approval
+- medium: Telegram/manual approval + OpenClaw exec approval
 - high: Telegram button approval
 - critical: 기본 거부 또는 manual-only
 ```
@@ -1192,7 +1193,8 @@ task check 통과 또는 task CLI 미설치 시 개별 validator 통과
 - [x] v7.6.1 Telegram live button approve smoke
 - [x] v7.6.2 Telegram reject/duplicate live smoke
 - [x] v7.5.2 Browser read URL allowlist 확장
-- [ ] owner voice 등록
+- [x] v7.7 Voice → Telegram approved notify live E2E
+- [ ] owner voice 등록 (optional/later)
 - [ ] Browser read allowlist 템플릿화
 - [ ] Gateway v4 WebSocket 호환 또는 CLI fallback 유지 결정
 
@@ -1231,7 +1233,7 @@ browser/Codex plan/critical live execution은 계속 거부
 | 위험도 | 예시 | 기본 처리 |
 |---|---|---|
 | low | 브라우저 검색, 페이지 읽기, screenshot, 알림 | 음성 확인 후 실행 |
-| medium | VS Code 열기, Codex read-only plan, 일반 click/type | owner voice + 확인 |
+| medium | VS Code 열기, Codex read-only plan, 일반 click/type | Telegram/manual 확인 |
 | high | 파일 수정, test 실행, 로그인 세션 조작, 다운로드/업로드 | Telegram/manual 확인 |
 | critical | 삭제, 결제, 메일 발송, 게시, credential 접근, 관리자 권한 | 기본 거부 또는 manual-only |
 
@@ -1604,7 +1606,7 @@ v7.5.1 browser read approved live smoke 결과:
 - v7.5.2에서 live allowlist를 example.com, docs.openclaw.ai/*, docs.kiwi-voice.com/*로 확장
 - v7-5-2-browser-read-openclaw-docs approved request가 open/snapshot/screenshot 통과
 - gmail/github/http/evil-host/credentials/query/browser_interact live 시도는 거부
-- 다음 gate는 v7.7 owner voice 등록 또는 v7.5.3 Browser read allowlist 템플릿화
+- 다음 gate는 v7.7 Voice → Telegram approved notify live E2E 또는 v7.5.3 Browser read allowlist 템플릿화
 ```
 
 v7.6 Telegram approval adapter fixture 결과:
@@ -1623,6 +1625,21 @@ v7.6 Telegram approval adapter fixture 결과:
 - `v7-6-2-telegram-live-reject-20260603-211834`는 rejectedBy=telegram:8194519852 metadata를 기록
 - duplicate callback은 ignored 처리됐고 approved duplicate는 생성되지 않음
 - live execution allowlist는 notify + windows-cdp example.com browser_read 그대로 유지
+```
+
+v7.7 Voice → Telegram approved notify live E2E 결과:
+
+```text
+- owner voice 등록은 필수 gate에서 제외하고 optional/later 신호로 낮춤
+- kiwi_live_approval_bridge.py가 새 Kiwi live dry-run notify preview만 pending queue로 승격
+- 승격 조건: wouldExecute=false, action=notify, riskTier=low, payloadHash valid
+- 실제 Web Microphone 발화 "테스트 알림 보내줘"가 Codex planner notify preview로 도달
+- request id: kiwi-live-20260604-013123-459
+- Telegram Approve callback으로 approvalMethod=telegram, approvedBy=telegram:8194519852 기록
+- approved runner dry-run 후 dispatcher notify live 1회 실행 성공
+- executed marker 생성 후 duplicate live 실행은 skip
+- Web Microphone 종료 후 web_audio_clients=0 복귀
+- 다음 gate는 voice → approved browser_read live 또는 Browser read allowlist 템플릿화
 ```
 
 정책 변경 전:
