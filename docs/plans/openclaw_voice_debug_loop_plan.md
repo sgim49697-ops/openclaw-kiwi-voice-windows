@@ -10,14 +10,14 @@
 ## Current Status
 
 ```text
-현재 canonical 기준: v7.6.1 Telegram Live Button Smoke
+현재 canonical 기준: v7.6.2 Telegram Reject/Duplicate Live Smoke
 v7.2.1~v7.2.14: microphone/STT/wake/command 진단 archive
 repo 상태: main...origin/main clean
 Gateway approvals: allowlist + ask=always + askFallback=deny + autoAllowSkills=off
 Kiwi runtime: OPENCLAW_BIN=dry-run-openclaw.cmd, KIWI_WS_ENABLED=false
 Live smoke: approved runner로 dispatcher notify 1회, browser_read example.com 1회 통과
-Approval: Telegram adapter fixture와 live button approve 통과
-다음 gate: v7.6.2 Telegram reject/duplicate live smoke 또는 v7.5.2 Browser read URL allowlist 확장
+Approval: Telegram adapter fixture, live approve, live reject, duplicate callback 통과
+다음 gate: v7.5.2 Browser read URL allowlist 확장 또는 v7.7 owner voice 등록
 ```
 
 정리 기준:
@@ -1447,6 +1447,33 @@ e2e_approved_runner.py --dry-run -> dispatcher command preview만 확인
 - `v7-6-1-telegram-live-notify-20260603-210927` 승인 callback 처리 성공.
 - approved metadata는 `approvalMethod=telegram`, `approvedBy=telegram:8194519852`, `approvedAt`을 기록했다.
 - runner는 `--dry-run`으로만 실행했고 실제 dispatcher/browser/Codex/Kiwi action은 실행하지 않았다.
+- Gateway approvals는 `allowlist + ask=always + askFallback=deny + autoAllowSkills=off` 상태를 유지했다.
+
+## v7.6.2 - Telegram Reject/Duplicate Live Smoke
+
+목표:
+
+```text
+실제 Telegram Reject 버튼이 rejected queue 전이를 만들고,
+이미 처리된 request의 late/duplicate callback이 추가 전이를 만들지 않는지 검증한다.
+```
+
+검증:
+
+```text
+voice_planner.py --write-approval -> pending notify 생성
+telegram_approval.py send-pending -> @total_assistant_bot 메시지 전송
+telegram_approval.py poll-once -> approvalMethod=telegram, rejectedBy=telegram:8194519852
+같은 메시지의 추가 callback -> status=ignored, existingStatus=rejected
+```
+
+결과:
+
+- `v7-6-2-telegram-live-reject-20260603-211834` reject callback 처리 성공.
+- rejected metadata는 `approvalMethod=telegram`, `rejectedBy=telegram:8194519852`, `rejectedAt`을 기록했다.
+- approved queue에 동일 request가 생기지 않았다.
+- duplicate callback은 `ignored`로 처리됐고 상태는 rejected로 유지됐다.
+- 실제 dispatcher/browser/Codex/Kiwi action은 실행하지 않았다.
 - Gateway approvals는 `allowlist + ask=always + askFallback=deny + autoAllowSkills=off` 상태를 유지했다.
 
 검증 케이스:
