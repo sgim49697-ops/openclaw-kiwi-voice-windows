@@ -10,14 +10,14 @@
 ## Current Status
 
 ```text
-현재 canonical 기준: v7.5 Approved Notify Live Execution Smoke
+현재 canonical 기준: v7.5.1 Browser Read Approved Live Smoke
 v7.2.1~v7.2.14: microphone/STT/wake/command 진단 archive
 repo 상태: main...origin/main clean
 Gateway approvals: allowlist + ask=always + askFallback=deny + autoAllowSkills=off
 Kiwi runtime: OPENCLAW_BIN=dry-run-openclaw.cmd, KIWI_WS_ENABLED=false
-Live smoke: Codex planner → manual approval queue → approved runner → dispatcher notify 1회 통과
-실제 실행: low-risk dispatcher notify만 허용, browser/Codex/Kiwi/Telegram live action 없음
-다음 gate: v7.5.1 Browser read approved live smoke 또는 v7.6 Telegram approval
+Live smoke: approved runner로 dispatcher notify 1회, browser_read example.com 1회 통과
+실제 실행: low-risk notify와 windows-cdp example.com browser_read만 허용
+다음 gate: v7.6 Telegram approval 또는 v7.5.2 Browser read URL allowlist 확장
 ```
 
 정리 기준:
@@ -1366,6 +1366,32 @@ e2e_approved_runner.py --dry-run -> dispatcher preview
 e2e_approved_runner.py --execute-live --confirm-request-id v7-5-notify -> Windows notification 성공
 두 번째 live 실행 -> executed marker 때문에 skip
 confirm mismatch / payloadHash mismatch / critical / browser / codex live 시도 -> 거부
+```
+
+## v7.5.1 - Browser Read Approved Live Smoke
+
+목표:
+
+```text
+승인된 low-risk browser_read request를 dedicated windows-cdp profile에서 example.com read-only로 1회 실행한다.
+```
+
+정책:
+
+- `browser_read` live는 `riskTier=low`, `approvalMethod=manual|telegram`, `profile=windows-cdp`, `url=https://example.com`일 때만 허용한다.
+- live 실행은 계속 `--execute-live --confirm-request-id <id>`가 필요하다.
+- 실행은 `browser_probe.py --profile windows-cdp --url https://example.com --snapshot-limit 200 --no-write-log`를 호출한다.
+- browser_interact, Codex plan, 개인 profile, Gmail/임의 URL은 live 거부한다.
+
+검증:
+
+```text
+voice_planner.py --write-approval -> pending browser_read 생성
+approval_queue.py approve -> approved browser_read 생성
+e2e_approved_runner.py --dry-run -> browser probe preview
+e2e_approved_runner.py --execute-live --confirm-request-id v7-5-1-browser-read -> open/snapshot/screenshot 성공
+두 번째 live 실행 -> executed marker 때문에 skip
+payloadHash mismatch / browser_interact / Codex plan / user profile / gmail URL live 시도 -> 거부
 ```
 
 검증 케이스:

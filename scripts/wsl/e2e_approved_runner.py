@@ -35,7 +35,7 @@ BROWSER_ACTIONS = {
 }
 DENIED_RISK_TIERS = {"critical"}
 DISPATCHER_APPROVAL_METHODS = {"voice", "telegram", "manual"}
-LIVE_ACTIONS = {"notify"}
+LIVE_ACTIONS = {"notify", "browser_read"}
 LIVE_APPROVAL_METHODS = {"manual", "telegram"}
 LIVE_RISK_TIERS = {"low"}
 
@@ -192,11 +192,20 @@ def validate_live_request(request: dict, confirm_request_id: str | None) -> None
     if confirm_request_id != request_id:
         raise ValueError("confirm-request-id must match request-id")
     if request.get("action") not in LIVE_ACTIONS:
-        raise ValueError("v7.5 live execution is limited to notify")
+        raise ValueError("v7.5.1 live execution is limited to notify and browser_read")
     if request.get("riskTier") not in LIVE_RISK_TIERS:
-        raise ValueError("v7.5 live execution requires low risk")
+        raise ValueError("v7.5.1 live execution requires low risk")
     if request.get("approvalMethod") not in LIVE_APPROVAL_METHODS:
-        raise ValueError("v7.5 live execution requires manual or telegram approval")
+        raise ValueError("v7.5.1 live execution requires manual or telegram approval")
+    if request.get("action") == "browser_read":
+        params = request.get("params")
+        if not isinstance(params, dict):
+            raise ValueError("browser_read params must be an object")
+        if params.get("profile") != DEFAULT_BROWSER_PROFILE:
+            raise ValueError(f"v7.5.1 browser live requires profile={DEFAULT_BROWSER_PROFILE}")
+        url = safe_url(str(params.get("url", DEFAULT_BROWSER_URL)))
+        if not is_default_browser_url(url):
+            raise ValueError(f"v7.5.1 browser live requires url={DEFAULT_BROWSER_URL}")
 
 
 def dispatcher_approval_method(request: dict) -> str:
@@ -223,6 +232,19 @@ def safe_url(value: str) -> str:
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
         raise ValueError("browser URL must be http or https")
     return value
+
+
+def is_default_browser_url(value: str) -> bool:
+    parsed = urlparse(value)
+    default = urlparse(DEFAULT_BROWSER_URL)
+    return (
+        parsed.scheme == default.scheme
+        and parsed.netloc.lower() == default.netloc.lower()
+        and parsed.path.rstrip("/") == default.path.rstrip("/")
+        and not parsed.params
+        and not parsed.query
+        and not parsed.fragment
+    )
 
 
 def browser_command(profile: str, *args: str) -> list[str]:
@@ -262,31 +284,29 @@ def execute_browser_read(request: dict, dry_run: bool) -> list[dict]:
     if profile != DEFAULT_BROWSER_PROFILE:
         raise ValueError(f"browser profile must be {DEFAULT_BROWSER_PROFILE}")
     url = safe_url(str(params.get("url", DEFAULT_BROWSER_URL)))
-    commands = [
-        ("browser_status", browser_command(profile, "status"), 30),
-        ("browser_open", browser_command(profile, "open", url), 45),
-        ("browser_snapshot", browser_command(profile, "snapshot", "--format", "aria", "--limit", "200"), 45),
-        ("browser_screenshot", browser_command(profile, "screenshot"), 45),
+    command = [
+        "python3",
+        "scripts/wsl/browser_probe.py",
+        "--profile",
+        profile,
+        "--url",
+        url,
+        "--snapshot-limit",
+        "200",
+        "--no-write-log",
     ]
     if dry_run:
         return [
             {
-                "name": name,
+                "name": "browser_read_probe",
                 "command": command,
                 "returncode": 0,
                 "status": "dry_run",
                 "durationMs": 0,
-                "detail": "approved browser read command not executed by --dry-run",
+                "detail": "approved browser read probe not executed by --dry-run",
             }
-            for name, command, _timeout in commands
         ]
-    results = []
-    for name, command, timeout in commands:
-        result = run_command(name, command, timeout=timeout)
-        results.append(result)
-        if result["returncode"] != 0:
-            break
-    return results
+    return [run_command("browser_read_probe", command, timeout=240)]
 
 
 def execute_browser_interact(request: dict, dry_run: bool) -> list[dict]:
@@ -396,7 +416,7 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     group.add_argument("--all", action="store_true", help="Run all approved requests.")
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--dry-run", action="store_true", help="Validate and print commands without executing them. This is the default.")
-    mode.add_argument("--execute-live", action="store_true", help="Execute one approved low-risk notify request.")
+    mode.add_argument("--execute-live", action="store_true", help="Execute one approved low-risk notify or browser_read request.")
     parser.add_argument("--confirm-request-id", help="Required for --execute-live; must match --request-id.")
     parser.add_argument("--force", action="store_true", help="Re-run an approved request even if it has an executed marker.")
     parser.add_argument("--log-path", type=Path, default=DEFAULT_LOG_PATH)

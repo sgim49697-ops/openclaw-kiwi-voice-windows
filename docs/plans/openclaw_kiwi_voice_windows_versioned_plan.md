@@ -125,6 +125,15 @@ Approved notify live smoke v7.5:
   - executed marker 생성 후 두 번째 live 실행은 skip
   - confirm mismatch, payloadHash mismatch, critical, browser_read, open_vscode_codex_plan live 시도는 거부
   - next gate: v7.5.1 browser read approved live smoke 또는 v7.6 Telegram approval
+
+Browser read approved live smoke v7.5.1:
+  - approved runner live 범위를 `browser_read`까지 확장하되 `windows-cdp` + `https://example.com`로 제한
+  - browser live 실행은 `browser_probe.py --profile windows-cdp --url https://example.com --snapshot-limit 200 --no-write-log` 경로만 사용
+  - `v7-5-1-browser-read` approved request로 open/snapshot/screenshot 성공
+  - screenshot artifact: `.debugloop/artifacts/browser/browser-read-ok.png`
+  - executed marker 생성 후 두 번째 live 실행은 skip
+  - payloadHash mismatch, browser_interact, open_vscode_codex_plan, user profile, gmail URL live 시도는 거부
+  - next gate: v7.6 Telegram approval 또는 v7.5.2 Browser read URL allowlist 확장
 ```
 
 현재 Node는 `system.run`, `system.run.prepare`, `system.which`, `screen.snapshot`, `camera.list`,
@@ -1073,11 +1082,27 @@ execution: notify only
 - marker가 있으면 두 번째 live 실행은 skip된다.
 - browser/Codex plan/critical/payloadHash mismatch live 시도는 거부된다.
 
-v7.5.1 이후:
+### v7.5.1 - Browser Read Approved Live Smoke
+
+```text
+상태: dedicated browser read live smoke 완료
+범위: windows-cdp + https://example.com read-only
+execution: browser_read only
+```
+
+완료 기준:
+
+- approved `browser_read` live는 `windows-cdp` profile과 `https://example.com` URL만 허용한다.
+- browser probe가 status/tabs/open/doctor/snapshot/screenshot/console/errors를 통과한다.
+- screenshot artifact가 생성된다.
+- marker가 있으면 두 번째 live 실행은 skip된다.
+- browser_interact, Codex plan, user profile, Gmail/임의 URL live 시도는 거부된다.
+
+v7.6 이후:
 
 - owner voice 등록
 - Telegram/manual approval 연결
-- browser read approved live smoke
+- Browser read URL allowlist 확장
 - Gateway v4 WebSocket compatibility 또는 CLI fallback 최종 결정
 
 ### Windows 설치 원칙
