@@ -1188,8 +1188,9 @@ task check 통과 또는 task CLI 미설치 시 개별 validator 통과
 - [x] v7.4 manual/local external approval gate contract
 - [x] v7.5 approved notify live execution smoke
 - [x] v7.5.1 Browser read approved live smoke
+- [x] v7.6 Telegram approval adapter fixture smoke
 - [ ] owner voice 등록
-- [ ] Telegram approval 연결
+- [ ] Telegram live button approval 연결
 - [ ] Browser read URL allowlist 확장
 - [ ] Gateway v4 WebSocket 호환 또는 CLI fallback 유지 결정
 
@@ -1206,6 +1207,7 @@ approval_queue.py로 pending -> approved/rejected 상태 전이 가능
 e2e_approved_runner.py --dry-run으로 approved request 검증 가능
 approved low-risk notify request는 명시적 live confirm 후 1회 실행 가능
 approved low-risk browser_read request는 windows-cdp + example.com에서 1회 실행 가능
+Telegram callback fixture로 pending -> approved/rejected 전이 가능
 browser/Codex plan/critical live execution은 계속 거부
 ```
 
@@ -1595,6 +1597,19 @@ v7.5.1 browser read approved live smoke 결과:
 - executed marker 생성 후 재실행은 skip
 - payloadHash mismatch, browser_interact, open_vscode_codex_plan, user profile, gmail URL live 시도는 거부
 - 다음 gate는 v7.6 Telegram approval 또는 v7.5.2 Browser read URL allowlist 확장
+```
+
+v7.6 Telegram approval adapter fixture 결과:
+
+```text
+- telegram_approval.py가 render/send-pending/poll-once/handle-update/probe-fixture 지원
+- callback data는 approve|reject:<requestId>:<payloadHashTail> 형식
+- fixture approve는 approvalMethod=telegram, approvedBy=telegram:fixture-owner 기록
+- wrong chat id, wrong payloadHash tail, unknown request id는 거부
+- critical approve callback은 rejected 처리
+- repeated callback은 ignored 처리되어 duplicate transition 없음
+- local Telegram env가 없어 live send/poll smoke는 v7.6.1로 보류
+- live execution allowlist는 notify + windows-cdp example.com browser_read 그대로 유지
 ```
 
 정책 변경 전:

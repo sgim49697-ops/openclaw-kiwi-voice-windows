@@ -10,14 +10,14 @@
 ## Current Status
 
 ```text
-현재 canonical 기준: v7.5.1 Browser Read Approved Live Smoke
+현재 canonical 기준: v7.6 Telegram Approval Adapter Fixture Smoke
 v7.2.1~v7.2.14: microphone/STT/wake/command 진단 archive
 repo 상태: main...origin/main clean
 Gateway approvals: allowlist + ask=always + askFallback=deny + autoAllowSkills=off
 Kiwi runtime: OPENCLAW_BIN=dry-run-openclaw.cmd, KIWI_WS_ENABLED=false
 Live smoke: approved runner로 dispatcher notify 1회, browser_read example.com 1회 통과
-실제 실행: low-risk notify와 windows-cdp example.com browser_read만 허용
-다음 gate: v7.6 Telegram approval 또는 v7.5.2 Browser read URL allowlist 확장
+Approval: Telegram adapter fixture 승인/거절 통과, live Telegram env는 아직 미설정
+다음 gate: v7.6.1 Telegram live button smoke 또는 v7.5.2 Browser read URL allowlist 확장
 ```
 
 정리 기준:
@@ -1392,6 +1392,36 @@ e2e_approved_runner.py --dry-run -> browser probe preview
 e2e_approved_runner.py --execute-live --confirm-request-id v7-5-1-browser-read -> open/snapshot/screenshot 성공
 두 번째 live 실행 -> executed marker 때문에 skip
 payloadHash mismatch / browser_interact / Codex plan / user profile / gmail URL live 시도 -> 거부
+```
+
+## v7.6 - Telegram Approval Adapter Fixture Smoke
+
+목표:
+
+```text
+pending approval request를 Telegram inline keyboard 형식으로 렌더링하고,
+callback_query fixture로 approved/rejected queue 전이를 검증한다.
+```
+
+정책:
+
+- token/chat id는 repo에 저장하지 않고 `.debugloop/local/telegram-approval.env` 또는 shell env만 사용한다.
+- `send-pending`과 `poll-once`는 env가 있을 때만 live Telegram API를 호출한다.
+- callback data는 `approve:<requestId>:<payloadHashTail>` 또는 `reject:<requestId>:<payloadHashTail>`만 허용한다.
+- callback chat/user가 `TELEGRAM_CHAT_ID`와 맞지 않으면 거부한다.
+- critical request는 Telegram approve callback이 와도 rejected로 처리한다.
+- live execution allowlist는 v7.5.1 그대로 유지한다.
+
+검증:
+
+```text
+voice_planner.py --write-approval -> pending notify 생성
+telegram_approval.py render -> Telegram message + inline keyboard JSON 생성
+telegram_approval.py probe-fixture --decision approve -> approvedBy=telegram:<chat_id>
+e2e_approved_runner.py --dry-run -> approved request preview
+wrong chat id / wrong payloadHash tail / unknown request id -> 거부
+critical approve callback -> rejected
+repeated callback -> ignored, duplicate transition 없음
 ```
 
 검증 케이스:
