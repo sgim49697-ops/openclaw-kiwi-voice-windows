@@ -232,6 +232,21 @@ Kiwi v7.2.14 fresh command STT gate:
   - best near miss: standard small_short_prompt constrainedCommandHits=2/5
   - no local config.yaml prompt update was applied
   - live smoke remains skipped until a future offline command gate passes
+
+Kiwi v7.2.15 live dry-run stabilization:
+  - session-local Kiwi fixes made the live dry-run path usable enough to pass notify/cancel/critical smoke
+  - local backup: C:\Users\ksg63\projects\kiwi-voice\backups\openclaw-kiwi-voice-windows\v7.2.15-20260603-143626
+  - local config.yaml keeps stt.whisper_dialog_prompt: "테스트 알림 보내줘"
+  - local listener.py keeps ListenerConfig.wake_word priority for WakeWordDetector
+  - local text_processing.py treats Korean short command/critical markers such as "보내", "삭제", "결제" as complete phrases
+  - local openclaw_cli.py removes the initial system prompt when OPENCLAW_BIN points to the dry-run shim
+  - repo dry-run classifier now checks critical markers before cancel and accepts the STT cancel alias "치소"
+  - live notify: windows_wrapper/notify approval preview only, wouldExecute=false, payloadHash present
+  - live cancel: control/cancel, approvalRequest=null, wouldExecute=false
+  - live critical: deny/critical, approvalRequest=null, wouldExecute=false
+  - Web Microphone closed cleanly and Kiwi returned to listening with web_audio_clients=0
+  - no dispatcher/OpenClaw agent/browser/node live action executed
+  - next gate: v7.3 owner voice + Telegram approval preparation
 ```
 
 현재 Node는 `system.run`, `system.run.prepare`, `system.which`, `screen.snapshot`, `camera.list`,
@@ -1043,7 +1058,37 @@ OpenClaw approvals / dispatcher / Node policy: unchanged
 - v7.2.11 결과, `small + "오픈클로"` prompt가 wake phrase는 3/3 인식했지만 command body는 0/3이었다.
 - v7.2.12 결과, wake-only two-step flow도 command-only STT가 `테스트 알림 보내줘`를 0/3으로 놓쳐 blocked다.
 - 다음은 v7.2.13에서 alternate STT backend, constrained command grammar, browser raw/noise setting, or dedicated wake-word engine을 비교한다.
-- notify/cancel/critical live smoke는 wake phrase와 command가 dry-run shim에 안정적으로 도달한 뒤 재시도한다.
+- v7.2.15에서 세션 내 로컬 Kiwi 보정값을 고정하고 notify/cancel/critical live dry-run smoke를 통과했다.
+
+### v7.2.15 - Live dry-run stabilization
+
+```text
+상태: 통과
+범위: dry-run only, no dispatcher/OpenClaw agent/browser/node live execution
+local backup: C:\Users\ksg63\projects\kiwi-voice\backups\openclaw-kiwi-voice-windows\v7.2.15-20260603-143626
+OPENCLAW_BIN: dry-run-openclaw.cmd
+KIWI_WS_ENABLED: false
+Gateway approvals: allowlist + ask=always + askFallback=deny + autoAllowSkills=off
+```
+
+로컬 Kiwi 보정:
+
+- `config.yaml`: `stt.whisper_dialog_prompt: "테스트 알림 보내줘"` 유지
+- `listener.py`: `ListenerConfig.wake_word`가 detector에 우선 적용
+- `text_processing.py`: 한국어 짧은 명령/critical marker `보내`, `삭제`, `결제`를 complete phrase로 처리
+- `openclaw_cli.py`: dry-run shim 사용 시 첫 system prompt를 제거하고 실제 transcript command만 전달
+
+검증:
+
+- notify live dry-run: `windows_wrapper/notify`, `wouldExecute=false`, `payloadHash` 포함 approval preview
+- cancel live dry-run: `control/cancel`, `approvalRequest=null`, `wouldExecute=false`
+- critical live dry-run: `deny/critical`, `approvalRequest=null`, `wouldExecute=false`
+- Web Microphone 종료 후 `state=listening`, `is_processing=false`, `web_audio_clients=0`
+
+다음:
+
+- owner voice 등록과 Telegram approval 경로를 v7.3에서 준비한다.
+- dispatcher live execution은 approval-layer gate 이후로 유지한다.
 
 ### Windows 설치 원칙
 

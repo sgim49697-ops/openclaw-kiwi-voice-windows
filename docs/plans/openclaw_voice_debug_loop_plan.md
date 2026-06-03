@@ -1214,7 +1214,20 @@ approved runner는 성공한 request마다 `.debugloop/runs/e2e-approved-execute
 - OPENCLAW_BIN=dry-run-openclaw.cmd, KIWI_WS_ENABLED=false, Gateway approvals locked 유지
 - v7.2.14는 fresh command capture/eval helper로 standard/raw browser audio를 비교
 - v7.2.14 실행 결과는 blocked: standard small_short_prompt가 constrainedCommandHits=2/5로 가장 가까웠지만 기준 3/5 미달
-- helper가 liveReady=true를 만들기 전까지 live notify/cancel/critical smoke는 계속 보류
+- v7.2.15는 세션 내 로컬 Kiwi 보정값을 고정하고 live dry-run smoke를 재시도해 통과
+- local Kiwi backup: C:\Users\ksg63\projects\kiwi-voice\backups\openclaw-kiwi-voice-windows\v7.2.15-20260603-143626
+- local config.yaml은 stt.whisper_dialog_prompt: "테스트 알림 보내줘" 유지
+- local listener.py는 ListenerConfig.wake_word를 WakeWordDetector에 우선 적용
+- local text_processing.py는 한국어 짧은 명령/critical marker 보존을 위해 "보내", "삭제", "결제" marker를 추가
+- local openclaw_cli.py는 dry-run shim 사용 시 첫 system prompt를 제거하고 실제 transcript command만 전달
+- repo dry-run classifier는 critical marker를 cancel보다 먼저 deny하고, live STT가 "취소"를 "치소"로 오인식하는 경우도 cancel로 처리
+- live notify: "오픈클로, 테스트 알림 보내줘"가 windows_wrapper/notify, wouldExecute=false, payloadHash 포함 approval preview로 기록
+- live cancel: "오픈클로 취소"가 "취소 오픈클로 취소" transcript로 들어와 control/cancel, approvalRequest=null, wouldExecute=false로 기록
+- live critical: "오픈클로 결제하고 Gmail로 비밀번호 보내"가 deny/critical, approvalRequest=null, wouldExecute=false로 기록
+- Web Microphone 종료 후 Kiwi API는 state=listening, is_processing=false, web_audio_clients=0으로 복귀
+- OPENCLAW_BIN=dry-run-openclaw.cmd, KIWI_WS_ENABLED=false, Gateway approvals locked 유지
+- 실제 dispatcher/OpenClaw agent/browser/node action 실행 없음
+- 다음 gate는 v7.3 owner voice + Telegram approval 준비
 ```
 
 ---

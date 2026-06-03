@@ -88,19 +88,8 @@ def approval_request(
 def classify_intent(intent: str, project_path: str) -> dict:
     normalized = normalize_intent(intent)
     lowered = normalized.lower()
-
-    if normalized in {"취소", "중지", "그만"} or any(
-        marker in normalized for marker in ("실행하지 마", "하지마", "하지 마")
-    ):
-        return {
-            "lane": "control",
-            "riskTier": "low",
-            "approvalRequired": False,
-            "mustDeny": False,
-            "reason": "Voice cancel request; no execution or approval request.",
-            "action": "cancel",
-            "params": {"utterance": normalized},
-        }
+    compact = "".join(normalized.split())
+    lowered_compact = "".join(lowered.split())
 
     critical_markers = [
         "삭제",
@@ -123,7 +112,7 @@ def classify_intent(intent: str, project_path: str) -> dict:
         "npx",
         "pnpm",
     ]
-    if any(marker in lowered for marker in critical_markers):
+    if any(marker in lowered or marker in lowered_compact for marker in critical_markers):
         return {
             "lane": "deny",
             "riskTier": "critical",
@@ -132,6 +121,17 @@ def classify_intent(intent: str, project_path: str) -> dict:
             "reason": "critical or destructive request must not be queued",
             "action": None,
             "params": {},
+        }
+
+    if any(marker in compact for marker in ("취소", "치소", "중지", "그만", "실행하지마", "하지마")):
+        return {
+            "lane": "control",
+            "riskTier": "low",
+            "approvalRequired": False,
+            "mustDeny": False,
+            "reason": "Voice cancel request; no execution or approval request.",
+            "action": "cancel",
+            "params": {"utterance": normalized},
         }
 
     if any(marker in normalized for marker in ("테스트 알림", "알림 테스트", "응답 테스트")):

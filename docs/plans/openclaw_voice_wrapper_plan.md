@@ -1192,6 +1192,7 @@ task check 통과 또는 task CLI 미설치 시 개별 validator 통과
 - [x] v7.2.8 WebAudioBridge segment buffering fix: 1초 이상 segment 생성 확인
 - [~] v7.2.9 Whisper/STT filter tuning: Korean transcript 생성, wake phrase 미보존으로 dry-run shim 미도달
 - [~] v7.2.10 Korean wake detector fix: parser 수정 완료, live STT가 wake phrase 미인식
+- [x] v7.2.15 Kiwi live dry-run 안정화: notify/cancel/critical smoke 통과
 - [ ] owner voice 등록
 - [ ] Telegram approval 연결
 - [ ] Gateway v4 WebSocket 호환 또는 CLI fallback 유지 결정
@@ -1490,6 +1491,25 @@ v7.2.14 fresh command STT gate 계획/구현:
 - best near miss: standard small_short_prompt constrainedCommandHits=2/5
 - 모든 후보가 pass threshold 3/5 미달이므로 local config.yaml prompt 변경 없음
 - 다음 gate는 command phrase를 더 짧게 쪼갠 dedicated command grammar 또는 alternate STT backend 비교
+```
+
+v7.2.15 Kiwi live dry-run 안정화 결과:
+
+```text
+- Windows Kiwi local backup:
+  C:\Users\ksg63\projects\kiwi-voice\backups\openclaw-kiwi-voice-windows\v7.2.15-20260603-143626
+- local config.yaml은 stt.whisper_dialog_prompt: "테스트 알림 보내줘" 유지
+- local listener.py는 ListenerConfig.wake_word를 WakeWordDetector에 우선 적용
+- local text_processing.py는 "보내", "삭제", "결제" 등 한국어 짧은 명령/critical marker를 complete phrase로 처리
+- local openclaw_cli.py는 dry-run shim 사용 시 첫 system prompt를 제거하고 실제 transcript command만 전달
+- repo classifier는 critical marker를 cancel보다 먼저 deny하고, STT cancel alias "치소"를 cancel로 처리
+- notify live smoke: windows_wrapper/notify approval preview only, wouldExecute=false, payloadHash present
+- cancel live smoke: control/cancel, approvalRequest=null, wouldExecute=false
+- critical live smoke: deny/critical, approvalRequest=null, wouldExecute=false
+- Web Microphone 종료 후 Kiwi API는 state=listening, is_processing=false, web_audio_clients=0
+- OPENCLAW_BIN=dry-run-openclaw.cmd, KIWI_WS_ENABLED=false, Gateway approvals locked 유지
+- 실제 dispatcher/OpenClaw agent/browser/node 실행 없음
+- 다음 gate는 v7.3 owner voice + Telegram approval 준비
 ```
 
 정책 변경 전:
