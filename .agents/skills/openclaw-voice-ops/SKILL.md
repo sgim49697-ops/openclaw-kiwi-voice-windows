@@ -24,6 +24,40 @@ delete, or raw-shell phrases before the Codex planner. Those phrases still go to
 Safety enforcement happens after planning through schema validation, action allowlists,
 approval checks, browser permissions, and dispatcher policy.
 
+## Current Canonical State
+
+The current canonical milestone is v7.8 complete.
+
+Completed flow:
+
+1. Kiwi STT produces a transcript.
+2. Codex OAuth voice planner creates a dry-run approval preview.
+3. The approval queue receives a pending request.
+4. Telegram approval moves the request to approved or rejected.
+5. Approved `notify` requests can run live once through the dispatcher.
+6. Approved `browser_read` requests can run live once through `windows-cdp`.
+
+Live `browser_read` is limited to the dedicated `windows-cdp` profile and allowlisted
+read-only URLs. Gateway approvals must remain `allowlist + ask=always +
+askFallback=deny + autoAllowSkills=off`.
+
+## Do Not Re-run By Default
+
+- Do not restart v7.2.1 through v7.2.14 microphone/STT debugging by default; v7.2.15
+  and v7.8 supersede those details.
+- Do not make owner voice registration a required gate. Keep it optional/later.
+- Do not revisit Gateway v4 compatibility, STT tuning, or microphone calibration unless
+  there is a regression.
+- Do not commit Telegram tokens, chat ids, local credentials, or other personal secrets.
+
+## Next Required Gates
+
+1. Voice to Telegram approved Codex read-only plan.
+2. Voice to approved browser interact fixture.
+3. Operational runbook and stability cleanup.
+
+Treat browser read allowlist templating as supporting cleanup, not the main next gate.
+
 ## Windows Execution Rule
 
 Do not invent raw shell commands for runtime voice actions.
